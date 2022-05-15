@@ -237,11 +237,16 @@ def main():
     test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
+    adapter_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/model.pt"
+    coarse_classes_indices_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/classed_indices.pt"
+
     # load_train = False
     # load_test = False
+    # load_adapter = False
 
     load_train = True
     load_test = True
+    load_adapter = True
     
     search = False
 
@@ -253,7 +258,8 @@ def main():
     parser.add_argument('--lr', type=float, default=0.001, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=20)
+    parser.add_argument('--train_epoch', type=int, default=1)
+    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
     parser.add_argument('--augment_epoch', type=int, default=10)
     args = parser.parse_args()
     print(args)
@@ -298,7 +304,7 @@ def main():
     targets = []
 
     for label, items in split_by_label_dict.items():
-        imgs = imgs + random.sample(items, k_shot)
+        imgs = imgs + random.sample(items, k_shot) # k_shot * class_num = 16000
         targets = targets + [label for i in range(k_shot)]
     train_images.imgs = imgs
     train_images.targets = targets
@@ -377,129 +383,190 @@ def main():
 
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
-    adapter = Weight_Adapter(model, train_features_path, len(imagenet_classes), k_shot).cuda()
-    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
+    if load_adapter:
+        print(f'Loading fintuned adapter parameters..')
+    else:
+        print(f'Start fintuning adapter parameters..')
+        adapter = Weight_Adapter(model, train_features_path, len(imagenet_classes), k_shot).cuda()
+        optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
+        
+        best_top1 = 0
+        best_epoch = 0
+
+        topK_corase_classes_list = init_corase_class_list(class_num=1000)
+
+        for train_idx in range(args.train_epoch):
+            adapter.train()
+            correct_all = 0
+            n = 0
+            loss_list = []
+            print('Train time: {:} / {:}'.format(train_idx, args.train_epoch))
+            
+            alpha = args.alpha
+            beta = args.beta
+
+            for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
+                images = images.cuda()
+                target = target.cuda()
+                with torch.no_grad():
+                    image_features = model.encode_image(images)
+                    image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
+
+                # linear1: [image_dim, k_shot*class_num]
+                new_knowledge = adapter.linear1(image_features) # [batch, k_shot*class_num]
+
+                # simMatrix : [batch, k_shot*class_num] # 每个样本对训练集所有样本的相似度
+                # train_images_targets : [k_shot*class_num, class_num] (one-hot)
+                sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp()
+                new_logits =  sim_matrix @ (train_images_targets) # [batch, class_num]
+
+                # logits : [batch, class_num]
+                # zeroshot_weights : [image_dim, class_num]
+                logits = 100. * image_features @ zeroshot_weights 
+                logits = logits + new_logits * beta
+
+                loss = F.cross_entropy(logits, target)
+                loss_value = loss.item()
+                correct = accuracy(logits, target)
+                correct_all += correct[0]
+                n += len(logits)
+                loss_list.append(loss_value)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+
+                # record corase classes
+                corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), 5)
+                topK_corase_classes_list = update_corase_class_list(topK_corase_classes_list, corase_classes_indices)
+            print(f'epoch:{train_idx},top100 corase classes:{topK_corase_classes_list.topk(100)}')
+
+            current_lr = scheduler.get_last_lr()[0]
+            text = 'LR: {:.6f}, Acc: {:.4f} ({:}/{:}), Loss: {:.4f}'.format(current_lr, correct_all / n, correct_all, n,
+                                                                        sum(loss_list)/len(loss_list))
+            print(text)
+
+
+            # eval
+            adapter.eval()
+
+            top1, top5, n = 0., 0., 0.
+            with torch.no_grad():
+                test_features = torch.load(test_features_path)
+                test_labels = torch.load(test_targets_path)
+                test_features_new = test_features.to(torch.float16)
+
+            new_knowledge = adapter.linear1(test_features_new)
+            new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+            logits = 100. * test_features_new @ zeroshot_weights
+            logits = logits + new_logits * beta
+            acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+            top1 += acc1
+            top5 += acc5
+            n += test_features.size(0)
+            top1 = (top1 / n) * 100
+            top5 = (top5 / n) * 100
+            text = f"Testing Top-1 Accuracy: {top1:.2f}"
+            print(text)
+            print()
+
+            if top1 > best_top1:
+                best_top1 = top1
+                best_epoch = train_idx
+        
+        print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
+
+        # 1. save indices
+        print(f'Saving corase class indices..')
+        torch.save(topK_corase_classes_list, coarse_classes_indices_save_path)
+
+        # 2. save model parameters
+        print(f'Saving model..')
+        torch.save(adapter.linear1.weight.T, adapter_save_path)
+
+
+    # ------------------------------------------ coarse class refine ------------------------------------------
+    print(f'Loading coarse classes dataset')
+    topK_corase_classes_list = torch.load(coarse_classes_indices_save_path)
+    imgs = []
+    targets = []
+    for label, items in split_by_label_dict.items():
+        if label in topK_corase_classes_list:
+            imgs = imgs + random.sample(items, k_shot) # k_shot * class_num = 16000
+            targets = targets + [label for i in range(k_shot)]
+    train_images.imgs = imgs
+    train_images.targets = targets
+    train_images.samples = imgs
+    # coarse_classes_train_loader = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=False)
+    coarse_classes_train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=True)
+    # coarse_classes = imagenet_classes[topK_corase_classes_list]
+    # coarse_zero_shot_weights = zeroshot_classifier(coarse_classes, imagenet_templates, model)
     
-    best_top1 = 0
-    best_epoch = 0
 
-    corase_classes_list = init_corase_class_list(class_num=1000)
-
-    for train_idx in range(args.train_epoch):
+    print(f'Starting refining coarse class..')
+    adapter = Weight_Adapter(model, adapter_save_path, len(imagenet_classes), k_shot).cuda()
+    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
+    
+    for train_idx in range(args.refine_epoch):
         adapter.train()
-        correct_all = 0
-        n = 0
-        loss_list = []
-        print('Train time: {:} / {:}'.format(train_idx, args.train_epoch))
+        print('Refine time: {:} / {:}'.format(train_idx, args.refine_epoch))
         
         alpha = args.alpha
         beta = args.beta
 
-        for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
+        for i, (images, target) in enumerate(tqdm(coarse_classes_train_loader_shuffle)):
             images = images.cuda()
             target = target.cuda()
             with torch.no_grad():
                 image_features = model.encode_image(images)
-                image_features /= image_features.norm(dim=-1, keepdim=True)
+                image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
             new_knowledge = adapter.linear1(image_features)
-            new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
-            logits = 100. * image_features @ zeroshot_weights
+            sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp()
+            new_logits =  sim_matrix @ (train_images_targets) 
+            logits = 100. * image_features @ zeroshot_weights 
             logits = logits + new_logits * beta
 
             loss = F.cross_entropy(logits, target)
             loss_value = loss.item()
             correct = accuracy(logits, target)
-            correct_all += correct[0]
-            n += len(logits)
-            loss_list.append(loss_value)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             scheduler.step()
 
-            # record corase classes
-            corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), 5)
-            corase_classes_list = update_corase_class_list(corase_classes_list, corase_classes_indices)
-        print(f'epoch:{train_idx},top100 corase classes:{corase_classes_list.topk(100)}')
+    print(f'Finish refining..')
 
-        current_lr = scheduler.get_last_lr()[0]
-        text = 'LR: {:.6f}, Acc: {:.4f} ({:}/{:}), Loss: {:.4f}'.format(current_lr, correct_all / n, correct_all, n,
-                                                                       sum(loss_list)/len(loss_list))
-        print(text)
+    # test
+    adapter.eval()
 
+    top1, top5, n = 0., 0., 0.
+    with torch.no_grad():
+        test_features = torch.load(test_features_path)
+        test_labels = torch.load(test_targets_path)
+        test_features_new = test_features.to(torch.float16)
 
-        # eval
-        adapter.eval()
+    new_knowledge = adapter.linear1(test_features_new)
+    new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+    logits = 100. * test_features_new @ zeroshot_weights
+    logits = logits + new_logits * beta
+    acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+    top1 += acc1
+    top5 += acc5
+    n += test_features.size(0)
+    top1 = (top1 / n) * 100
+    top5 = (top5 / n) * 100
+    text = f"Testing Top-1 Accuracy: {top1:.2f}"
+    print(text)
 
-        top1, top5, n = 0., 0., 0.
-        with torch.no_grad():
-            test_features = torch.load(test_features_path)
-            test_labels = torch.load(test_targets_path)
-            test_features_new = test_features.to(torch.float16)
-
-        new_knowledge = adapter.linear1(test_features_new)
-        new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
-        logits = 100. * test_features_new @ zeroshot_weights
-        logits = logits + new_logits * beta
-        acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
-        top1 += acc1
-        top5 += acc5
-        n += test_features.size(0)
-        top1 = (top1 / n) * 100
-        top5 = (top5 / n) * 100
-        text = f"Testing Top-1 Accuracy: {top1:.2f}"
-        print(text)
-        print()
-
-        if top1 > best_top1:
-            best_top1 = top1
-            best_epoch = train_idx
-    
-    print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
-    print()
-       
-    # ------------------------------------------ Search ------------------------------------------
-    if search:
-        print("Begin to search")
-        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)]
-        beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)]
-        best_top1 = 0
-
-        adapter.eval()
-        for alpha in alpha_list:
-            for beta in beta_list:
-                top1, top5, n = 0., 0., 0.
-                batch_idx = 0
-                # predict
-                with torch.no_grad():
-                    test_features = torch.load(test_features_path)
-                    test_labels = torch.load(test_targets_path)
-                    test_features_new = test_features.to(torch.float16)
-                new_knowledge = adapter.linear1(test_features_new)
-                new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
-                logits = 100. * test_features_new @ zeroshot_weights
-                logits = logits + new_logits * beta
-                # measure accuracy
-                acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
-                batch_idx += 1
-                top1 += acc1
-                top5 += acc5
-                n += test_features_new.size(0)
-                top1 = (top1 / n) * 100
-                top5 = (top5 / n) * 100
-
-                if top1 > best_top1:
-                    text = 'New best setting, alpha: {:.2f}, beta: {:.2f}; Top-1 acc: {:.2f}'.format(alpha, beta, top1)
-                    print(text)
-                    best_top1 = top1         
-
-        print(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
 
 
 # python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/tip_adapter_ImageNet_MultiStage.py
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
     main()
 
