@@ -229,14 +229,14 @@ class Weight_Adapter(nn.Module):
 def main():
 
     # Path for ImageNet
-    data_path = "/data/luowei/data"
+    data_path = "/data/lglFewShot/ImageNet"
 
 
-    train_features_path = "./imagenet_f_train.pt"
-    train_targets_path = "./imagenet_t_train.pt"
+    train_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_train.pt"
+    train_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_train.pt"
 
-    test_features_path = "./imagenet_f_test.pt"
-    test_targets_path = "./imagenet_t_test.pt"
+    test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
+    test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
     # load_train = False
     # load_test = False
@@ -244,7 +244,7 @@ def main():
     load_train = True
     load_test = True
     
-    search = True
+    search = False
 
     # ~~~~~~~~~~~~~~~~~~
     k_shot = 16
@@ -396,7 +396,7 @@ def main():
     beta = args.beta
     top1, top5, n = 0., 0., 0.
     new_knowledge = test_features @ train_images_features_agg
-    new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ train_images_targets
+    new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ train_images_targets
     logits = 100. * test_features @ zeroshot_weights
     logits = logits + new_logits * beta
     acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
@@ -427,7 +427,7 @@ def main():
                     test_labels = torch.load(test_targets_path)
                     test_features_new = test_features
                 new_knowledge = test_features @ train_images_features_agg
-                new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ (train_images_targets)
+                new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
                 logits = 100. * test_features_new @ zeroshot_weights
                 logits = logits + new_logits * beta
 
@@ -476,7 +476,7 @@ def main():
                 image_features /= image_features.norm(dim=-1, keepdim=True)
 
             new_knowledge = adapter.linear1(image_features)
-            new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ (train_images_targets)
+            new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
             logits = 100. * image_features @ zeroshot_weights
             logits = logits + new_logits * beta
 
@@ -507,7 +507,7 @@ def main():
             test_features_new = test_features
 
         new_knowledge = adapter.linear1(test_features_new)
-        new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ (train_images_targets)
+        new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
         logits = 100. * test_features_new @ zeroshot_weights
         logits = logits + new_logits * beta
         acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
@@ -544,7 +544,7 @@ def main():
                 test_labels = torch.load(test_targets_path)
                 test_features_new = test_features
             new_knowledge = adapter.linear1(test_features_new)
-            new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ (train_images_targets)
+            new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
             logits = 100. * test_features_new @ zeroshot_weights
             logits = logits + new_logits * beta
             # measure accuracy
