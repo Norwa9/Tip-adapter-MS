@@ -218,11 +218,28 @@ def zeroshot_classifier(classnames, templates, model):
     return zeroshot_weights
 
 
-class Weight_Adapter(nn.Module):
+'''
+image_feature -> clip_adapter -> image_feature -> tip_adapter(linear1) -> probability distributions
+'''
+class MultiStage_Adapter(nn.Module):
+    # 用训练集初始化tip_adapter(linear1)
     def __init__(self, clip_model, train_features_path, cls_num, shots):
         super().__init__()
+
+        self.clip_adapter = nn.Sequential(
+            nn.Linear(1024, 256, bias=False),
+            nn.ReLU(),
+            nn.Linear(256, 1024, bias=False),
+        ).to(torch.float16)
+
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
         self.linear1.weight = nn.Parameter(torch.load(train_features_path).t().to(torch.float16))
+
+    def forward(self,img_features):
+        x = self.clip_adapter(img_features)
+        x = self.linear1(x)
+
+        return x
 
 
 def main():
@@ -237,16 +254,16 @@ def main():
     test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
-    adapter_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/model.pt"
+    state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/state_dict.pt"
     coarse_classes_indices_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/classed_indices.pt"
 
     # load_train = False
     # load_test = False
-    # load_adapter = False
+    load_adapter = False
 
     load_train = True
     load_test = True
-    load_adapter = True
+    # load_adapter = True
     
     search = False
 
@@ -256,10 +273,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--lr', type=float, default=0.001, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=0.0001, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=1)
-    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
+    parser.add_argument('--train_epoch', type=int, default=10)
+    parser.add_argument('--refine_epoch', type=int, default=1, help='finetune epoch for corase classes samples')
     parser.add_argument('--augment_epoch', type=int, default=10)
     args = parser.parse_args()
     print(args)
@@ -383,11 +401,11 @@ def main():
 
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
+    adapter = MultiStage_Adapter(clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
     if load_adapter:
         print(f'Loading fintuned adapter parameters..')
     else:
         print(f'Start fintuning adapter parameters..')
-        adapter = Weight_Adapter(model, train_features_path, len(imagenet_classes), k_shot).cuda()
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
         
@@ -414,7 +432,7 @@ def main():
                     image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
                 # linear1: [image_dim, k_shot*class_num]
-                new_knowledge = adapter.linear1(image_features) # [batch, k_shot*class_num]
+                new_knowledge = adapter(image_features) # [batch, k_shot*class_num]
 
                 # simMatrix : [batch, k_shot*class_num] # 每个样本对训练集所有样本的相似度
                 # train_images_targets : [k_shot*class_num, class_num] (one-hot)
@@ -458,7 +476,7 @@ def main():
                 test_labels = torch.load(test_targets_path)
                 test_features_new = test_features.to(torch.float16)
 
-            new_knowledge = adapter.linear1(test_features_new)
+            new_knowledge = adapter(test_features_new)
             new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
             logits = 100. * test_features_new @ zeroshot_weights
             logits = logits + new_logits * beta
@@ -484,7 +502,7 @@ def main():
 
         # 2. save model parameters
         print(f'Saving model..')
-        torch.save(adapter.linear1.weight.T, adapter_save_path)
+        torch.save(adapter.state_dict(), state_dict_save_path)
 
 
     # ------------------------------------------ coarse class refine ------------------------------------------
@@ -505,9 +523,21 @@ def main():
     # coarse_zero_shot_weights = zeroshot_classifier(coarse_classes, imagenet_templates, model)
     
 
-    print(f'Starting refining coarse class..')
-    adapter = Weight_Adapter(model, adapter_save_path, len(imagenet_classes), k_shot).cuda()
-    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
+    print(f'Starting refining coarse class..') 
+    adapter.load_state_dict(torch.load(state_dict_save_path))
+
+    # 冻结 tip-adapter , 微调 clip-adapter
+    for name,param in adapter.named_parameters(): # 只有prompt是可微调的
+        if "linear1" in name:
+            param.requires_grad_(False)
+        else:
+            param.requires_grad_(True)
+    print(f'trainable parameters:')
+    for name,param in adapter.named_parameters():
+        if param.requires_grad:
+            print(name)
+
+    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
     
     for train_idx in range(args.refine_epoch):
@@ -524,7 +554,7 @@ def main():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
-            new_knowledge = adapter.linear1(image_features)
+            new_knowledge = adapter(image_features)
             sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp()
             new_logits =  sim_matrix @ (train_images_targets) 
             logits = 100. * image_features @ zeroshot_weights 
@@ -550,7 +580,7 @@ def main():
         test_labels = torch.load(test_targets_path)
         test_features_new = test_features.to(torch.float16)
 
-    new_knowledge = adapter.linear1(test_features_new)
+    new_knowledge = adapter(test_features_new)
     new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
     logits = 100. * test_features_new @ zeroshot_weights
     logits = logits + new_logits * beta
