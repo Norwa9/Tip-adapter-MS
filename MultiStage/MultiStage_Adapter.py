@@ -235,8 +235,9 @@ class MultiStage_Adapter(nn.Module):
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
         self.linear1.weight = nn.Parameter(torch.load(train_features_path).t().to(torch.float16))
 
-    def forward(self,img_features):
-        x = self.clip_adapter(img_features)
+    # x : img_features
+    def forward(self,x):
+        x = self.clip_adapter(x)
         x = self.linear1(x)
 
         return x
@@ -260,10 +261,12 @@ def main():
     # load_train = False
     # load_test = False
     load_adapter = False
+    # refine = False
 
     load_train = True
     load_test = True
     # load_adapter = True
+    refine = True
     
     search = False
 
@@ -273,11 +276,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--lr', type=float, default=0.001, help='lr')
-    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=2e-5, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
     parser.add_argument('--train_epoch', type=int, default=5)
-    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
     parser.add_argument('--augment_epoch', type=int, default=10)
     args = parser.parse_args()
     print(args)
@@ -503,6 +506,8 @@ def main():
     
 
     # ------------------------------------------ coarse class refine ------------------------------------------
+    if refine == False:
+        args.refine_epoch = 0
     print(f'Loading coarse classes dataset')
     topK_corase_classes_list = torch.load(coarse_classes_indices_save_path)
     imgs = []
@@ -518,14 +523,15 @@ def main():
     coarse_classes_train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=True)
     # coarse_classes = imagenet_classes[topK_corase_classes_list]
     # coarse_zero_shot_weights = zeroshot_classifier(coarse_classes, imagenet_templates, model)
-    
 
     print(f'Starting refining coarse class..') 
     # load adapter
     adapter.load_state_dict(torch.load(state_dict_save_path))
+    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
 
     # 冻结 tip-adapter , 微调 clip-adapter
-    for name,param in adapter.named_parameters(): # 只有prompt是可微调的
+    for name,param in adapter.named_parameters(): 
         if "linear1" in name:
             param.requires_grad_(False)
         else:
@@ -534,16 +540,12 @@ def main():
     for name,param in adapter.named_parameters():
         if param.requires_grad:
             print(name)
-
-    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
     
+    alpha = args.alpha
+    beta = args.beta
     for train_idx in range(args.refine_epoch):
         adapter.train()
         print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
-        
-        alpha = args.alpha
-        beta = args.beta
 
         for i, (images, target) in enumerate(tqdm(coarse_classes_train_loader_shuffle)):
             images = images.cuda()
@@ -552,11 +554,8 @@ def main():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
-            new_knowledge = adapter(image_features)
-            sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp()
-            new_logits =  sim_matrix @ (train_images_targets) 
-            logits = 100. * image_features @ zeroshot_weights 
-            logits = logits + new_logits * beta
+            new_image_features = adapter.clip_adapter(image_features)
+            logits = 100. * new_image_features @ zeroshot_weights 
 
             loss = F.cross_entropy(logits, target)
             loss_value = loss.item()
@@ -590,7 +589,6 @@ def main():
     top5 = (top5 / n) * 100
     text = f"Testing Top-1 Accuracy: {top1:.2f}"
     print(text)
-
 
     # ------------------------------------------ Search ------------------------------------------
     if search:
@@ -631,7 +629,7 @@ def main():
 
 
 
-# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/tip_adapter_ImageNet_MultiStage.py
+# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter.py
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = '3'
     main()
