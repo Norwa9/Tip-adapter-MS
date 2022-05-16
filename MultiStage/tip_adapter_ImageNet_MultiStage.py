@@ -227,9 +227,9 @@ class MultiStage_Adapter(nn.Module):
         super().__init__()
 
         self.clip_adapter = nn.Sequential(
-            nn.Linear(1024, 256, bias=False),
+            nn.Linear(1024, 1024, bias=False),
             nn.ReLU(),
-            nn.Linear(256, 1024, bias=False),
+            nn.Dropout(p=0.2)
         ).to(torch.float16)
 
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
@@ -273,11 +273,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--lr', type=float, default=0.001, help='lr')
-    parser.add_argument('--refine_lr', type=float, default=0.0001, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=10)
-    parser.add_argument('--refine_epoch', type=int, default=1, help='finetune epoch for corase classes samples')
+    parser.add_argument('--train_epoch', type=int, default=5)
+    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
     parser.add_argument('--augment_epoch', type=int, default=10)
     args = parser.parse_args()
     print(args)
@@ -419,7 +419,7 @@ def main():
             correct_all = 0
             n = 0
             loss_list = []
-            print('Train time: {:} / {:}'.format(train_idx, args.train_epoch))
+            print('Train time: {:} / {:}'.format(train_idx+1, args.train_epoch))
             
             alpha = args.alpha
             beta = args.beta
@@ -486,24 +486,21 @@ def main():
             n += test_features.size(0)
             top1 = (top1 / n) * 100
             top5 = (top5 / n) * 100
-            text = f"Testing Top-1 Accuracy: {top1:.2f}"
-            print(text)
-            print()
+            print(f"Testing Top-1 Accuracy: {top1:.2f}")
 
             if top1 > best_top1:
                 best_top1 = top1
                 best_epoch = train_idx
+                print(f'Saving best model..')
+                torch.save(adapter.state_dict(), state_dict_save_path)
+                print() # \n
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
-        # 1. save indices
+        # save indices
         print(f'Saving corase class indices..')
         torch.save(topK_corase_classes_list, coarse_classes_indices_save_path)
-
-        # 2. save model parameters
-        print(f'Saving model..')
-        torch.save(adapter.state_dict(), state_dict_save_path)
-
+    
 
     # ------------------------------------------ coarse class refine ------------------------------------------
     print(f'Loading coarse classes dataset')
@@ -524,6 +521,7 @@ def main():
     
 
     print(f'Starting refining coarse class..') 
+    # load adapter
     adapter.load_state_dict(torch.load(state_dict_save_path))
 
     # 冻结 tip-adapter , 微调 clip-adapter
@@ -542,7 +540,7 @@ def main():
     
     for train_idx in range(args.refine_epoch):
         adapter.train()
-        print('Refine time: {:} / {:}'.format(train_idx, args.refine_epoch))
+        print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
         
         alpha = args.alpha
         beta = args.beta
@@ -592,6 +590,44 @@ def main():
     top5 = (top5 / n) * 100
     text = f"Testing Top-1 Accuracy: {top1:.2f}"
     print(text)
+
+
+    # ------------------------------------------ Search ------------------------------------------
+    if search:
+        print("Begin to search")
+        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6]
+        beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
+        best_top1 = 0
+        adapter.eval()
+        for alpha in alpha_list:
+            for beta in beta_list:
+                top1, top5, n = 0., 0., 0.
+                batch_idx = 0
+                # predict
+                with torch.no_grad():
+                    test_features = torch.load(test_features_path)
+                    test_labels = torch.load(test_targets_path)
+                    test_features_new = test_features.to(torch.float16)
+                new_knowledge = adapter(test_features_new)
+                new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+                logits = 100. * test_features_new @ zeroshot_weights
+                logits = logits + new_logits * beta
+                # measure accuracy
+                acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+                batch_idx += 1
+                top1 += acc1
+                top5 += acc5
+                n += test_features_new.size(0)
+                top1 = (top1 / n) * 100
+                top5 = (top5 / n) * 100
+
+                if top1 > best_top1:
+                    text = 'New best setting, alpha: {:.2f}, beta: {:.2f}; Top-1 acc: {:.2f}'.format(alpha, beta, top1)
+                    print(text)
+                    best_top1 = top1
+                    
+
+        print(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
 
 
 

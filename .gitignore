@@ -1,2 +1,3 @@
-features/
-checkpoints/
+features
+checkpoints
+checkpoints/classed_indices.pt
