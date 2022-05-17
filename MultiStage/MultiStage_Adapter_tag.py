@@ -273,7 +273,7 @@ def main():
 
     load_train = True
     load_test = True
-    # load_adapter = True
+    load_adapter = True
     refine = True
     # search = True
     
@@ -291,7 +291,7 @@ def main():
     parser.add_argument('--augment_epoch', type=int, default=10)
 
     # model
-    parser.add_argument('--dropout', type=float, default=0.2, help='drop out rate of clip adapter')
+    parser.add_argument('--dropout', type=float, default=0.5, help='drop out rate of clip adapter')
 
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
@@ -422,8 +422,6 @@ def main():
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
     adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
-    alpha = args.alpha
-    beta = args.beta
     if load_adapter:
         print(f'Loading fintuned adapter parameters..')
     else:
@@ -434,6 +432,8 @@ def main():
         best_top1 = 0
         best_epoch = 0
 
+        topK_corase_classes_list = init_corase_class_list(class_num=1000)
+
         for train_idx in range(args.train_epoch):
             adapter.train()
             correct_all = 0
@@ -441,6 +441,9 @@ def main():
             loss_list = []
             print('Train time: {:} / {:}'.format(train_idx+1, args.train_epoch))
             
+            alpha = args.alpha
+            beta = args.beta
+
             for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
                 images = images.cuda()
                 target = target.cuda()
@@ -472,11 +475,17 @@ def main():
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
-        
+
+                # record corase classes
+                corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), args.topK)
+                topK_corase_classes_list = update_corase_class_list(topK_corase_classes_list, corase_classes_indices)
+            print(f'epoch:{train_idx}, top{args.coarse_class_num} corase classes: {topK_corase_classes_list.topk(args.coarse_class_num)}')
+
             current_lr = scheduler.get_last_lr()[0]
             text = 'LR: {:.6f}, Acc: {:.4f} ({:}/{:}), Loss: {:.4f}'.format(current_lr, correct_all / n, correct_all, n,
                                                                         sum(loss_list)/len(loss_list))
             print(text)
+
 
             # eval
             adapter.eval()
@@ -508,38 +517,10 @@ def main():
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
-        
-        # ------------------------------------------ find class refine ------------------------------------------
-
-        print(f"Start to find coarse class")
-
-        '''读取最好的模型,过一遍数据集查找粗类别'''
-        adapter.load_state_dict(torch.load(state_dict_save_path))
-
-        topK_corase_classes_list = init_corase_class_list(class_num=1000)
-
-        adapter.eval()
-        for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
-            images = images.cuda()
-            target = target.cuda()
-            with torch.no_grad():
-                image_features = model.encode_image(images)
-                image_features /= image_features.norm(dim=-1, keepdim=True)
-                new_knowledge = adapter(image_features) 
-                sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp()
-                new_logits =  sim_matrix @ (train_images_targets)
-                logits = 100. * image_features @ zeroshot_weights 
-                logits = logits + new_logits * beta
-
-            # record corase classes
-            corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), args.topK)
-            topK_corase_classes_list = update_corase_class_list(topK_corase_classes_list, corase_classes_indices)
-        print(f'corase classes: {topK_corase_classes_list.topk(args.coarse_class_num)}')
-        
-        # save corase classes indices
+        # save indices
         print(f'Saving corase class indices..')
         torch.save(topK_corase_classes_list, coarse_classes_indices_save_path)
-
+    
 
     # ------------------------------------------ coarse class refine ------------------------------------------
     if refine == False:
@@ -567,7 +548,7 @@ def main():
 
     print(f'Starting refining coarse class..') 
     # load adapter
-    # adapter.load_state_dict(torch.load(state_dict_save_path))
+    adapter.load_state_dict(torch.load(state_dict_save_path))
     optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
 
