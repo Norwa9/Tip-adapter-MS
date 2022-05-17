@@ -275,7 +275,7 @@ def main():
     load_test = True
     # load_adapter = True
     refine = True
-    # search = True
+    search = True
     
     
 
@@ -284,20 +284,20 @@ def main():
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lr', type=float, default=0.001, help='lr')
+    parser.add_argument('--lr', type=float, default=0.0015, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=10)
+    parser.add_argument('--train_epoch', type=int, default=20)
     parser.add_argument('--augment_epoch', type=int, default=10)
 
     # model
-    parser.add_argument('--dropout', type=float, default=0.2, help='drop out rate of clip adapter')
+    parser.add_argument('--dropout', type=float, default=0.0, help='drop out rate of clip adapter')
 
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
     parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -541,7 +541,7 @@ def main():
         torch.save(topK_corase_classes_list, coarse_classes_indices_save_path)
 
 
-    # ------------------------------------------ coarse class refine ------------------------------------------
+    # ------------------------------------------ use coarse class to refine model ------------------------------------------
     if refine == False:
         args.refine_epoch = 0
     print(f'Loading coarse classes dataset')
@@ -574,7 +574,7 @@ def main():
     # 冻结 tip-adapter , 微调 clip-adapter
     for name,param in adapter.named_parameters(): 
         if "clip_adapter" in name:
-            param.requires_grad_(True)
+            param.requires_grad_(True) 
         else:
             param.requires_grad_(False)
     print(f'trainable parameters:')
@@ -595,15 +595,10 @@ def main():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
-            '''only finetune clip-adpater'''
-            new_image_features = adapter.clip_adapter(image_features)
-            logits = 100. * new_image_features @ zeroshot_weights 
-
-            '''finetune clip-adpater and tip-adapter'''
-            # new_knowledge = adapter(image_features)
-            # new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
-            # logits = 100. * image_features @ zeroshot_weights
-            # logits = logits + new_logits * beta
+            new_knowledge = adapter(image_features)
+            new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+            logits = 100. * image_features @ zeroshot_weights
+            logits = logits + new_logits * beta
 
             loss = F.cross_entropy(logits, target)
             loss_value = loss.item()
