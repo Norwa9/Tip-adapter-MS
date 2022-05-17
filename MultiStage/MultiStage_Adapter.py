@@ -273,9 +273,9 @@ def main():
 
     load_train = True
     load_test = True
-    # load_adapter = True
+    load_adapter = True
     refine = True
-    search = True
+    # search = True
     
     
 
@@ -297,7 +297,7 @@ def main():
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
     parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -421,13 +421,13 @@ def main():
 
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
-    adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
-    alpha = args.alpha
-    beta = args.beta
     if load_adapter:
         print(f'Loading fintuned adapter parameters..')
     else:
         print(f'Start fintuning adapter parameters..')
+        adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
+        alpha = args.alpha
+        beta = args.beta
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
         
@@ -567,16 +567,16 @@ def main():
 
     print(f'Starting refining coarse class..') 
     # load adapter
-    # adapter.load_state_dict(torch.load(state_dict_save_path))
+    adapter.load_state_dict(torch.load(state_dict_save_path))
     optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(coarse_classes_train_loader_shuffle))
 
     # 冻结 tip-adapter , 微调 clip-adapter
     for name,param in adapter.named_parameters(): 
         if "clip_adapter" in name:
-            param.requires_grad_(True) 
+            param.requires_grad_(False) 
         else:
-            param.requires_grad_(False)
+            param.requires_grad_(True)
     print(f'trainable parameters:')
     for name,param in adapter.named_parameters():
         if param.requires_grad:
