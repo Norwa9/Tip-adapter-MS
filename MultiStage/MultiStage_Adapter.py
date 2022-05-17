@@ -223,22 +223,29 @@ image_feature -> clip_adapter -> image_feature -> tip_adapter(linear1) -> probab
 '''
 class MultiStage_Adapter(nn.Module):
     # 用训练集初始化tip_adapter(linear1)
-    def __init__(self, clip_model, train_features_path, cls_num, shots):
+    def __init__(self, args, clip_model, train_features_path, cls_num, shots):
         super().__init__()
 
         self.clip_adapter = nn.Sequential(
             nn.Linear(1024, 1024, bias=False),
             nn.ReLU(),
-            nn.Dropout(p=0.2)
+            nn.Dropout(p=args.dropout),
         ).to(torch.float16)
 
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
         self.linear1.weight = nn.Parameter(torch.load(train_features_path).t().to(torch.float16))
 
+        self.alpha = 0.6
+
     # x : img_features
-    def forward(self,x):
-        x = self.clip_adapter(x)
-        x = self.linear1(x)
+    def forward(self,image_features):
+        f = self.clip_adapter(image_features) # clip-adapter 输出
+
+        f = f / f.norm(dim=-1, keepdim=True) # 归一化
+
+        f = self.alpha * f + (1-self.alpha) * image_features # clip-adapter 残差连接
+
+        x = self.linear1(f)
 
         return x
 
@@ -258,17 +265,19 @@ def main():
     state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/state_dict.pt"
     coarse_classes_indices_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/classed_indices.pt"
 
-    # load_train = False
-    # load_test = False
+    load_train = False
+    load_test = False
     load_adapter = False
-    # refine = False
+    refine = False
+    search = False
 
     load_train = True
     load_test = True
-    # load_adapter = True
+    load_adapter = True
     refine = True
+    # search = True
     
-    search = False
+    
 
     # ~~~~~~~~~~~~~~~~~~
     k_shot = 16
@@ -276,12 +285,20 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--lr', type=float, default=0.001, help='lr')
-    parser.add_argument('--refine_lr', type=float, default=2e-5, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=5)
-    parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
+    parser.add_argument('--train_epoch', type=int, default=10)
     parser.add_argument('--augment_epoch', type=int, default=10)
+
+    # model
+    parser.add_argument('--dropout', type=float, default=0.7, help='drop out rate of clip adapter')
+
+    # refine
+    parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
+    parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
+    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
+    
     args = parser.parse_args()
     print(args)
 
@@ -404,7 +421,7 @@ def main():
 
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
-    adapter = MultiStage_Adapter(clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
+    adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
     if load_adapter:
         print(f'Loading fintuned adapter parameters..')
     else:
@@ -460,9 +477,9 @@ def main():
                 scheduler.step()
 
                 # record corase classes
-                corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), 5)
+                corase_classes_indices = is_corase_class(logits.cpu(), target.cpu(), args.topK)
                 topK_corase_classes_list = update_corase_class_list(topK_corase_classes_list, corase_classes_indices)
-            print(f'epoch:{train_idx},top100 corase classes:{topK_corase_classes_list.topk(100)}')
+            print(f'epoch:{train_idx}, top{args.coarse_class_num} corase classes: {topK_corase_classes_list.topk(args.coarse_class_num)}')
 
             current_lr = scheduler.get_last_lr()[0]
             text = 'LR: {:.6f}, Acc: {:.4f} ({:}/{:}), Loss: {:.4f}'.format(current_lr, correct_all / n, correct_all, n,
@@ -493,7 +510,7 @@ def main():
 
             if top1 > best_top1:
                 best_top1 = top1
-                best_epoch = train_idx
+                best_epoch = train_idx + 1
                 print(f'Saving best model..')
                 torch.save(adapter.state_dict(), state_dict_save_path)
                 print() # \n
@@ -510,19 +527,24 @@ def main():
         args.refine_epoch = 0
     print(f'Loading coarse classes dataset')
     topK_corase_classes_list = torch.load(coarse_classes_indices_save_path)
+    topK_corase_classes_list = topK_corase_classes_list.topk(args.coarse_class_num)[1] # topk coarse class indices 
     imgs = []
     targets = []
+    index = 0
     for label, items in split_by_label_dict.items():
         if label in topK_corase_classes_list:
             imgs = imgs + random.sample(items, k_shot) # k_shot * class_num = 16000
-            targets = targets + [label for i in range(k_shot)]
+            targets = targets + [index for i in range(k_shot)] # 将 topK_corase_classes_list 中的类别下标从0开始重新标记
+            index += 1
     train_images.imgs = imgs
     train_images.targets = targets
     train_images.samples = imgs
-    # coarse_classes_train_loader = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=False)
     coarse_classes_train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=True)
-    # coarse_classes = imagenet_classes[topK_corase_classes_list]
-    # coarse_zero_shot_weights = zeroshot_classifier(coarse_classes, imagenet_templates, model)
+    coarse_classes = []
+    for index in topK_corase_classes_list:
+        coarse_classes.append(imagenet_classes[index])
+    coarse_zero_shot_weights = zeroshot_classifier(coarse_classes, imagenet_templates, model) # [image_dim, len(topK_corase_classes_list)]
+
 
     print(f'Starting refining coarse class..') 
     # load adapter
@@ -532,10 +554,10 @@ def main():
 
     # 冻结 tip-adapter , 微调 clip-adapter
     for name,param in adapter.named_parameters(): 
-        if "linear1" in name:
-            param.requires_grad_(False)
-        else:
+        if "clip_adapter" in name:
             param.requires_grad_(True)
+        else:
+            param.requires_grad_(False)
     print(f'trainable parameters:')
     for name,param in adapter.named_parameters():
         if param.requires_grad:
@@ -554,8 +576,15 @@ def main():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
 
+            '''only finetune clip-adpater'''
             new_image_features = adapter.clip_adapter(image_features)
             logits = 100. * new_image_features @ zeroshot_weights 
+
+            '''finetune clip-adpater and tip-adapter'''
+            # new_knowledge = adapter(image_features)
+            # new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+            # logits = 100. * image_features @ zeroshot_weights
+            # logits = logits + new_logits * beta
 
             loss = F.cross_entropy(logits, target)
             loss_value = loss.item()
@@ -632,5 +661,6 @@ def main():
 # python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter.py
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+    os.environ["CUDA_LAUNCH_BLOCKING"] = '1'
     main()
 

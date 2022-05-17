@@ -8,7 +8,7 @@
             "name": "MS-tip-adapter",
             "type": "python",
             "request": "launch",
-            "program": "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/tip_adapter_ImageNet_MultiStage.py",
+            "program": "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
