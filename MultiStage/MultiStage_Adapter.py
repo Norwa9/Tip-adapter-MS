@@ -274,7 +274,7 @@ def main():
     load_train = True
     load_test = True
     load_adapter = True
-    refine = True
+    # refine = True
     # search = True
     
     
@@ -296,8 +296,8 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-6, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=1, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -421,11 +421,11 @@ def main():
 
 
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
+    adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
     if load_adapter:
         print(f'Loading fintuned adapter parameters..')
     else:
         print(f'Start fintuning adapter parameters..')
-        adapter = MultiStage_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
         alpha = args.alpha
         beta = args.beta
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
@@ -651,6 +651,7 @@ def main():
                     test_features_new = test_features.to(torch.float16)
                 new_knowledge = adapter(test_features_new)
                 new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+                new_logits = 0.0
                 logits = 100. * test_features_new @ zeroshot_weights
                 logits = logits + new_logits * beta
                 # measure accuracy

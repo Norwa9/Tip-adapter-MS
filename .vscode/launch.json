@@ -11,6 +11,14 @@
             "program": "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "topk_trans_MS-tip-adapter",
+            "type": "python",
+            "request": "launch",
+            "program": "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter_topk_transform.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

@@ -62,6 +62,35 @@ def is_corase_class(logits:torch.Tensor, target:torch.Tensor,topk:int = 5):
     res = torch.tensor(res)
     return  res
 
+'''
+返回值:某样本对应top5最相似的类别'名称'
+'''
+def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list, k:int = 5):
+    logits = logits.to(torch.float32) # 转精度
+    indices = logits.topk(k)[1]
+    
+    new_target = [] # [batch]
+    # 对于一个样本，如果其topk中有GT，则将其新标签定义为topK中GT的下标
+    # 如果其topK没有GT，那么就在[0,K)中随机赋值一个新标签给该样本 TODO
+    for index, topK_i in enumerate(indices):
+        target_i = target[index]
+        if target_i in topK_i:
+            new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item()
+        else:
+            new_target_i = np.random.randint(0,5)
+        new_target.append(new_target_i)
+    
+    names = [] # [batch, k]
+    for indices_i in indices:
+        names_i = []
+        for index in indices_i:
+            names_i.append(classNames[index])
+        names.append(names_i)
+
+    return names, new_target
+
+
+
 # ----------------------------------dict----------------------------------
 '''
 初始化粗类别计数字典
