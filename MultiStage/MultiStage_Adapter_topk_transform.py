@@ -206,6 +206,7 @@ def accuracy(output, target, topk=(1,)):
 def zeroshot_classifier(classnames, templates, model):
     with torch.no_grad():
         zeroshot_weights = []
+        zeroshot_weights_dict = {}
         for classname in classnames:
             texts = [template.format(classname) for template in templates]  # format with class
             texts = clip.tokenize(texts).cuda()  # tokenize
@@ -214,9 +215,10 @@ def zeroshot_classifier(classnames, templates, model):
             class_embedding = class_embeddings.mean(dim=0)
             class_embedding /= class_embedding.norm()
             zeroshot_weights.append(class_embedding)
-        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda()
-    return zeroshot_weights
+            zeroshot_weights_dict[classname] = class_embedding # 1024
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda() # [1024, len(classnames)]
 
+    return zeroshot_weights, zeroshot_weights_dict
 
 class Tip_Adapter(nn.Module):
     # 用训练集初始化tip_adapter(linear1)
@@ -248,13 +250,11 @@ class ClassProjNet(nn.Module):
         self.clip_model = clip_model
 
     # images_features : [batch, 1024]
-    def forward(self, images_features, topK_classes):
-        topK_class_embeddings = [zeroshot_classifier(classnames, imagenet_templates, self.clip_model) for classnames in topK_classes] #  [batch, 1024, k]
-        topK_class_embeddings = torch.stack(topK_class_embeddings) # list of Tensor -> Tensor
-        topK_class_embeddings = topK_class_embeddings.permute(0,2,1) # [batch, k, 1024]
-        x = self.proj(topK_class_embeddings)  # [batch, k, 1024]
-        x = x.permute(0,2,1)  # [batch, 1024, k]
+    # class_embeddings : [batch, k, 1024]
+    def forward(self, images_features, class_embeddings):
+        x = self.proj(class_embeddings)  # [batch, k, 1024]
         x = x / x.norm(dim=-1, keepdim=True)
+        x = x.permute(0,2,1)  # [batch, 1024, k]
         
         images_features = images_features.unsqueeze(1) # [batch, 1024] -> [batch, 1, 1024]
         topK_score = images_features @ x #  [batch, 1, 1024] x [batch, 1024, k] = [batch ,1, k]
@@ -277,6 +277,8 @@ def main():
 
     state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/topk_transform_state_dict.pt"
     coarse_classes_indices_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/classed_indices.pt"
+
+    topK_class_embeddings_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/topK_class_embeddings.pt"
 
     load_train = False
     load_test = False
@@ -365,7 +367,7 @@ def main():
 
     # ------------------------------------------getting text feature------------------------------------------
     print('start getting text features.')
-    zeroshot_weights = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
+    zeroshot_weights, zeroshot_weights_dict = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
     print('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
@@ -524,6 +526,13 @@ def main():
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
+    # ------------------------------------------ save topK class embeddings ------------------------------------------
+    # load Adapter model
+    adapter.load_state_dict(torch.load(state_dict_save_path))
+    adapter.eval()
+
+
+
 
     # ------------------------------------------ coarse class refine ------------------------------------------
     if refine == False:
@@ -532,8 +541,6 @@ def main():
     # print(f'Loading coarse classes dataset')
     print(f'Starting refining coarse class..') 
 
-    # load Adapter model
-    adapter.load_state_dict(torch.load(state_dict_save_path))
     # init Class Proj model
     class_proj_net = ClassProjNet(args, model).cuda()
     optimizer = torch.optim.AdamW(class_proj_net.parameters(), lr=args.refine_lr, eps=1e-5)
@@ -548,7 +555,7 @@ def main():
     
     alpha = args.alpha
     beta = args.beta
-    adapter.eval()
+    
     class_proj_net.train()
     for train_idx in range(args.refine_epoch):
         
@@ -565,10 +572,9 @@ def main():
                 new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
                 logits = 100. * image_features @ zeroshot_weights
                 logits = logits + new_logits * beta
-                topk_class_names, new_target = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, 5)
+                class_embeddings, new_target = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-            pred = class_proj_net(image_features, topk_class_names) # [batch, k]
-            new_target = torch.tensor(new_target).cuda()
+            pred = class_proj_net(image_features, class_embeddings) # [batch, k]
 
             # new_target : [batch]
             # out : [batch, k]
@@ -595,11 +601,10 @@ def main():
     new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
     logits = 100. * test_features_new @ zeroshot_weights
     logits = logits + new_logits * beta
-    topk_class_names, new_target = find_topk_classes(logits.cpu(), test_labels.cpu(), imagenet_classes, 5)
+    class_embeddings, new_target = find_topk_classes(logits.cpu(), test_labels.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-    out = class_proj_net(test_features_new, topk_class_names) # [batch, k]
-
-    acc1, acc5 = accuracy(out, new_target, topk=(1, 5))
+    pred = class_proj_net(test_features_new, class_embeddings) # [batch, k]
+    acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
     top1 += acc1
     top5 += acc5
     n += test_features.size(0)

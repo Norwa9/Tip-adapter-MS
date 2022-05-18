@@ -65,10 +65,11 @@ def is_corase_class(logits:torch.Tensor, target:torch.Tensor,topk:int = 5):
 '''
 返回值:某样本对应top5最相似的类别'名称'
 '''
-def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list, k:int = 5):
+def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list, zeroshot_weights_dict, k:int = 5):
     logits = logits.to(torch.float32) # 转精度
-    indices = logits.topk(k)[1]
-    
+    indices = logits.topk(k)[1] # [batch , k]
+
+    # 1. new target
     new_target = [] # [batch]
     # 对于一个样本，如果其topk中有GT，则将其新标签定义为topK中GT的下标
     # 如果其topK没有GT，那么就在[0,K)中随机赋值一个新标签给该样本 TODO
@@ -79,15 +80,21 @@ def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list,
         else:
             new_target_i = np.random.randint(0,5)
         new_target.append(new_target_i)
-    
-    names = [] # [batch, k]
-    for indices_i in indices:
-        names_i = []
-        for index in indices_i:
-            names_i.append(classNames[index])
-        names.append(names_i)
 
-    return names, new_target
+    new_target = torch.tensor(new_target).cuda()
+    
+    # 2. class embedding  
+    class_embeddings = [] # [batch, k, 1024]
+    for indices_i in indices:
+        embeddings = []
+        for i in indices_i:
+            name = classNames[i]
+            embeddings.append(zeroshot_weights_dict[name])
+        embeddings = torch.stack(embeddings)
+        class_embeddings.append(embeddings)
+    class_embeddings = torch.stack(class_embeddings)
+
+    return class_embeddings, new_target
 
 
 
