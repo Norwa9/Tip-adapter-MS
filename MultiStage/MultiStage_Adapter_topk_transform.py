@@ -244,7 +244,7 @@ class ClassProjNet(nn.Module):
         self.proj = nn.Sequential(
             nn.Linear(1024, 1024, bias=False),
             nn.ReLU(),
-            nn.Dropout(p=args.dropout),
+            # nn.Dropout(p=args.dropout),
         ).to(torch.float16)
 
         self.clip_model = clip_model
@@ -255,10 +255,14 @@ class ClassProjNet(nn.Module):
         x = self.proj(class_embeddings)  # [batch, k, 1024]
         x = x / x.norm(dim=-1, keepdim=True)
         x = x.permute(0,2,1)  # [batch, 1024, k]
-        
+
         images_features = images_features.unsqueeze(1) # [batch, 1024] -> [batch, 1, 1024]
         topK_score = images_features @ x #  [batch, 1, 1024] x [batch, 1024, k] = [batch ,1, k]
         topK_score = topK_score.squeeze(1) # [batch ,1, k] -> [batch , k]
+
+        residual_sim = (images_features @ class_embeddings.permute(0,2,1)).squeeze(1)
+
+        topK_score = topK_score + residual_sim
 
         return topK_score # [batch, k]
 
@@ -311,8 +315,8 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=5, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -515,6 +519,7 @@ def main():
             top1 = (top1 / n) * 100
             top5 = (top5 / n) * 100
             print(f"Testing Top-1 Accuracy: {top1:.2f}")
+            print(f"Testing Top-5 Accuracy: {top5:.2f}")
 
             if top1 > best_top1:
                 best_top1 = top1
@@ -585,33 +590,33 @@ def main():
             optimizer.step()
             scheduler.step()
 
-    print(f'Finish refining..')
+    # print(f'Finish refining..')
 
-    # test
-    adapter.eval()
-    class_proj_net.eval()
+        # test
+        adapter.eval()
+        class_proj_net.eval()
 
-    top1, top5, n = 0., 0., 0.
-    with torch.no_grad():
-        test_features = torch.load(test_features_path)
-        test_labels = torch.load(test_targets_path)
-        test_features_new = test_features.to(torch.float16)
+        top1, top5, n = 0., 0., 0.
+        with torch.no_grad():
+            test_features = torch.load(test_features_path)
+            test_labels = torch.load(test_targets_path)
+            test_features_new = test_features.to(torch.float16)
 
-    new_knowledge = adapter(test_features_new)
-    new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
-    logits = 100. * test_features_new @ zeroshot_weights
-    logits = logits + new_logits * beta
-    class_embeddings, new_target = find_topk_classes(logits.cpu(), test_labels.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
+        new_knowledge = adapter(test_features_new)
+        new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
+        logits = 100. * test_features_new @ zeroshot_weights
+        logits = logits + new_logits * beta
+        class_embeddings, new_target = find_topk_classes(logits.cpu(), test_labels.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-    pred = class_proj_net(test_features_new, class_embeddings) # [batch, k]
-    acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
-    top1 += acc1
-    top5 += acc5
-    n += test_features.size(0)
-    top1 = (top1 / n) * 100
-    top5 = (top5 / n) * 100
-    text = f"Testing Top-1 Accuracy: {top1:.2f}"
-    print(text)
+        pred = class_proj_net(test_features_new, class_embeddings) # [batch, k]
+        acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
+        top1 += acc1
+        top5 += acc5
+        n += test_features.size(0)
+        top1 = (top1 / n) * 100
+        top5 = (top5 / n) * 100
+        print(f"Testing Top-1 Accuracy: {top1:.2f}")
+        # print(f"Testing Top-5 Accuracy: {top5:.2f}")
 
     # ------------------------------------------ Search ------------------------------------------
     if search:
