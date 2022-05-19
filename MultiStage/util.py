@@ -69,6 +69,8 @@ def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list,
     logits = logits.to(torch.float32) # 转精度
     indices = logits.topk(k)[1] # [batch , k]
 
+    offset = k
+
     # 1. new target
     new_target = [] # [batch]
     # 对于一个样本，如果其topk中有GT，则将其新标签定义为topK中GT的下标
@@ -78,21 +80,38 @@ def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list,
         if target_i in topK_i:
             new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item()
         else:
-            new_target_i = np.random.randint(0,5)
+            new_target_i = target_i + offset
         new_target.append(new_target_i)
 
     new_target = torch.tensor(new_target).cuda()
     
     # 2. class embedding  
     class_embeddings = [] # [batch, k, 1024]
-    for indices_i in indices:
+    for index, indices_i in enumerate(indices):
         embeddings = []
         for i in indices_i:
             name = classNames[i]
             embeddings.append(zeroshot_weights_dict[name])
-        embeddings = torch.stack(embeddings)
+        
+        # add neg embedding
+        if new_target[index] >= k: # 说明topK中没有GT
+            # 获取GT的类别下标
+            extra_index = new_target[index] - offset
+            # print(f'index:{index},pos, extra_index:{extra_index}')
+            new_target[index] = k # 把GT作为第k+1个class embedding
+        else:
+            # 随机从TopK以外的下标中取一个作为负类样本
+            while(1):
+                extra_index = np.random.randint(0,len(classNames))
+                if extra_index not in indices_i:
+                    # print(f'index:{index},neg, extra_index:{extra_index}')
+                    break
+        neg_name = classNames[extra_index]
+        embeddings.append(zeroshot_weights_dict[neg_name])
+        embeddings = torch.stack(embeddings) # [k+1, 1024]
         class_embeddings.append(embeddings)
     class_embeddings = torch.stack(class_embeddings)
+
 
     return class_embeddings, new_target
 

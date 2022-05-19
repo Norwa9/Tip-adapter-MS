@@ -252,19 +252,19 @@ class ClassProjNet(nn.Module):
     # images_features : [batch, 1024]
     # class_embeddings : [batch, k, 1024]
     def forward(self, images_features, class_embeddings):
-        x = self.proj(class_embeddings)  # [batch, k, 1024]
+        x = self.proj(class_embeddings)  # [batch, k+1, 1024]
         x = x / x.norm(dim=-1, keepdim=True)
-        x = x.permute(0,2,1)  # [batch, 1024, k]
+        x = x.permute(0,2,1)  # [batch, 1024, k+1]
 
         images_features = images_features.unsqueeze(1) # [batch, 1024] -> [batch, 1, 1024]
-        topK_score = images_features @ x #  [batch, 1, 1024] x [batch, 1024, k] = [batch ,1, k]
-        topK_score = topK_score.squeeze(1) # [batch ,1, k] -> [batch , k]
+        topK_score = images_features @ x #  [batch, 1, 1024] x [batch, 1024, k+1] = [batch ,1, k+1]
+        topK_score = topK_score.squeeze(1) # [batch ,1, k+1] -> [batch , k+1]
 
-        residual_sim = (images_features @ class_embeddings.permute(0,2,1)).squeeze(1)
+        residual_sim = (images_features @ class_embeddings.permute(0,2,1)).squeeze(1) # [batch,1, 1024] @ [batch, 1024, k+1] = [batch,1, k+1]
 
         topK_score = topK_score + residual_sim
 
-        return topK_score # [batch, k]
+        return topK_score # [batch, k+1]
 
 
 def main():
@@ -296,7 +296,7 @@ def main():
 
     load_train = True
     load_test = True
-    # load_adapter = True
+    load_adapter = True
     refine = True
     # search = True
     load_text_features = True # zero_shot_weights
@@ -320,8 +320,8 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-1, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=30, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -575,7 +575,7 @@ def main():
     
     class_proj_net.train()
     for train_idx in range(args.refine_epoch):
-        
+
         print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
 
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
@@ -591,7 +591,7 @@ def main():
                 logits = logits + new_logits * beta
                 class_embeddings, new_target = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-            pred = class_proj_net(image_features, class_embeddings) # [batch, k]
+            pred = class_proj_net(image_features, class_embeddings) # [batch, k+1]
 
             # new_target : [batch]
             # out : [batch, k]
@@ -605,7 +605,6 @@ def main():
     # print(f'Finish refining..')
 
         # test
-        adapter.eval()
         class_proj_net.eval()
 
         top1, top5, n = 0., 0., 0.
