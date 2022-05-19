@@ -238,16 +238,15 @@ class Tip_Adapter(nn.Module):
         return x
 
 class ClassProjNet(nn.Module):
-    def __init__(self, args, clip_model):
+    def __init__(self):
         super().__init__()
 
         self.proj = nn.Sequential(
-            nn.Linear(1024, 1024, bias=False),
+            nn.Linear(1024, 64, bias=False),
             nn.ReLU(),
+            nn.Linear(64, 1024, bias=False),
             # nn.Dropout(p=args.dropout),
         ).to(torch.float16)
-
-        self.clip_model = clip_model
 
     # images_features : [batch, 1024]
     # class_embeddings : [batch, k, 1024]
@@ -320,8 +319,8 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=30, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-2, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -559,14 +558,18 @@ def main():
     print(f'Starting refining coarse class..') 
 
     # init Class Proj model
-    class_proj_net = ClassProjNet(args, model).cuda()
+    class_proj_net = ClassProjNet().cuda()
     optimizer = torch.optim.AdamW(class_proj_net.parameters(), lr=args.refine_lr, eps=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(train_loader_shuffle))
 
     # 冻结 tip-adapter
     for name,param in adapter.named_parameters(): 
         param.requires_grad_(False)
+    # 打印训练参数
     for name,param in adapter.named_parameters():
+        if param.requires_grad:
+            print(f'trainable parameters: ',name)
+    for name,param in class_proj_net.named_parameters():
         if param.requires_grad:
             print(f'trainable parameters: ',name)
     
@@ -575,9 +578,8 @@ def main():
     
     class_proj_net.train()
     for train_idx in range(args.refine_epoch):
-
         print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
-
+        top1, top5, n = 0., 0., 0.
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
             images = images.cuda()
             target = target.cuda()
@@ -597,10 +599,20 @@ def main():
             # out : [batch, k]
             loss = F.cross_entropy(pred, new_target)
 
+            acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
+            top1 += acc1
+            top5 += acc5
+            n += test_features.size(0)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             scheduler.step()
+
+        top1 = (top1 / n) * 100
+        top5 = (top5 / n) * 100
+        print(f"Refining Top-1 Accuracy: {top1:.2f}")
+        print(f"Refining Top-5 Accuracy: {top5:.2f}")
 
     # print(f'Finish refining..')
 
@@ -627,7 +639,7 @@ def main():
         top1 = (top1 / n) * 100
         top5 = (top5 / n) * 100
         print(f"Testing Top-1 Accuracy: {top1:.2f}")
-        # print(f"Testing Top-5 Accuracy: {top5:.2f}")
+        print(f"Testing Top-5 Accuracy: {top5:.2f}")
 
     # ------------------------------------------ Search ------------------------------------------
     if search:

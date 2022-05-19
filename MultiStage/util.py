@@ -93,14 +93,15 @@ def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list,
             name = classNames[i]
             embeddings.append(zeroshot_weights_dict[name])
         
-        # add neg embedding
-        if new_target[index] >= k: # 说明topK中没有GT
-            # 获取GT的类别下标
+        
+        if new_target[index] >= k: 
+            # 1. topK中没有GT
+            # 把GT的类的class embedding作为正类
             extra_index = new_target[index] - offset
-            # print(f'index:{index},pos, extra_index:{extra_index}')
-            new_target[index] = k # 把GT作为第k+1个class embedding
-        else:
-            # 随机从TopK以外的下标中取一个作为负类样本
+            new_target[index] = k 
+        else: 
+            # 2. topK中有GT
+            # 随机从TopK的类别以外取一个作为类的class embedding作负类
             while(1):
                 extra_index = np.random.randint(0,len(classNames))
                 if extra_index not in indices_i:
