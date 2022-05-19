@@ -284,17 +284,22 @@ def main():
 
     topK_class_embeddings_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/topK_class_embeddings.pt"
 
+    zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
+    zeroshot_weights_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights_dict.pt"
+
     load_train = False
     load_test = False
     load_adapter = False
     refine = False
     search = False
+    load_text_features = False
 
     load_train = True
     load_test = True
-    load_adapter = True
+    # load_adapter = True
     refine = True
     # search = True
+    load_text_features = True # zero_shot_weights
     
     
 
@@ -315,7 +320,7 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=1e-1, help='lr')
     parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
@@ -370,8 +375,15 @@ def main():
     train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=True)
 
     # ------------------------------------------getting text feature------------------------------------------
-    print('start getting text features.')
-    zeroshot_weights, zeroshot_weights_dict = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
+    if not load_text_features:
+        print('start getting text features.')
+        zeroshot_weights, zeroshot_weights_dict = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
+        torch.save(zeroshot_weights,zeroshot_weights_save_path)
+        torch.save(zeroshot_weights_dict, zeroshot_weights_dict_save_path)
+    else:
+        print('Find saved text features.')
+        zeroshot_weights = torch.load(zeroshot_weights_save_path)
+        zeroshot_weights_dict = torch.load(zeroshot_weights_dict_save_path)
     print('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
