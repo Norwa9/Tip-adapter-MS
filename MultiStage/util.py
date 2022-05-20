@@ -142,15 +142,16 @@ return : [batch, class_num]
 def topK_indices_to_mask(batch_topk_indices:torch.tensor, class_num = 1000, shot = 16):
     batch_size = batch_topk_indices.shape[0]
     masks_class = torch.zeros(batch_size, class_num)
-    for index,indices in enumerate(batch_topk_indices):
+
+    for index, indices in enumerate(batch_topk_indices):
         for i in indices:
             masks_class[index][i] = 1
     
-    masks_sample = torch.zeros(batch_size, class_num * shot)
-    for i, line in enumerate(masks_class):
-        for j, value in enumerate(line):
-            for k in range(shot):
-                masks_sample[i][shot * j + k] = value 
+    
+    masks_sample = masks_class.unsqueeze(2)
+    masks_sample = masks_sample.repeat(1,1,16)
+    masks_sample = masks_sample.view(batch_size, -1)
+
 
     return masks_sample, masks_class
 

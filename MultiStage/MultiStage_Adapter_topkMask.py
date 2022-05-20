@@ -13,6 +13,7 @@ from tqdm import tqdm
 import argparse
 from util import *
 from modules.transformer import TransformerEncoder
+import time
 
 
 print("Torch version:", torch.__version__)
@@ -292,8 +293,8 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-4, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -519,11 +520,10 @@ def main():
     print(f'Starting refining..') 
     if refine == False:
         args.refine_epoch = 0
-
-    adapter_extractor = Tip_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
-
+        
     # adapter_extractor
     # 用于提取batch样本的mask
+    adapter_extractor = Tip_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
     adapter_extractor.load_state_dict(torch.load(state_dict_save_path))
     adapter_extractor.eval()
     
