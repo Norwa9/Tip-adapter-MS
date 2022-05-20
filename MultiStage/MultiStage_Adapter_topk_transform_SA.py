@@ -242,7 +242,7 @@ class ClassProjNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.self_attention = TransformerEncoder(embed_dim=1024,
-                                  num_heads=4,
+                                  num_heads=2,
                                   layers=1,
                                   attn_dropout=0.1,
                                   relu_dropout=0.1,
@@ -252,16 +252,20 @@ class ClassProjNet(nn.Module):
         
 
     # class_embeddings : [batch, k, 1024]
-    # zeroshot_weights : [1024, class_num]
-    def forward(self, class_embeddings, zeroshot_weights):
+    # images_features : [batch, 1024]
+    def forward(self, images_features, class_embeddings):
         class_embeddings = class_embeddings.float()
-        zeroshot_weights = zeroshot_weights.float()
+        images_features = images_features.float()
+        images_features = images_features.unsqueeze(1) # [batch, 1024] -> [batch, 1, 1024]
 
         class_embeddings = class_embeddings.permute(1, 0, 2) # [batch, k, 1024] -> [k, batch, 1024]
         encoded =  self.self_attention(class_embeddings) # [k, batch, 1024]
-        out = encoded[0] # [batch, 1024]
+        encoded = encoded.permute(1,2,0) # [k, batch, 1024] -> [batch, 1024, k]
         
-        pred = out @ zeroshot_weights # [batch, 1024] @ [1024, class_num] = [batch, class_num]
+        encoded = encoded / encoded.norm(dim=-1, keepdim=True)
+        
+        pred = images_features @ encoded   # [batch, 1, 1024] @ [batch, 1024, k] = [batch, 1, k]
+        pred = pred.squeeze(1) # [batch, 1, k] -> [batch, k]
 
         return pred
 
@@ -321,7 +325,7 @@ def main():
     # refine
     parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
     parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-2, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=1e-3, help='lr')
     parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
@@ -593,12 +597,12 @@ def main():
                 new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
                 logits = 100. * image_features @ zeroshot_weights
                 logits = logits + new_logits * beta
-                class_embeddings, _ = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
+                class_embeddings, new_target = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-            pred = class_proj_net(class_embeddings, zeroshot_weights) # [batch, class_num]
-            loss = F.cross_entropy(pred, target)
+            pred = class_proj_net(image_features, class_embeddings) # [batch, class_num]
+            loss = F.cross_entropy(pred, new_target)
 
-            acc1, acc5 = accuracy(pred, target, topk=(1, 5))
+            acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
             top1 += acc1
             top5 += acc5
             n += test_features.size(0)
@@ -629,7 +633,7 @@ def main():
         new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
         logits = 100. * test_features_new @ zeroshot_weights
         logits = logits + new_logits * beta
-        class_embeddings, _ = find_topk_classes(logits.cpu(), test_labels.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
+        class_embeddings = find_topk_classes_V2(logits.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
         pred = class_proj_net(class_embeddings, zeroshot_weights) # [batch, class_num]
         acc1, acc5 = accuracy(pred, test_labels, topk=(1, 5))

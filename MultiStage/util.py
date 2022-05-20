@@ -117,6 +117,22 @@ def find_topk_classes(logits:torch.Tensor, target:torch.Tensor, classNames:list,
     return class_embeddings, new_target
 
 
+def find_topk_classes_V2(logits:torch.Tensor, classNames:list, zeroshot_weights_dict, k:int = 5):
+    logits = logits.to(torch.float32) # 转精度
+    indices = logits.topk(k)[1] # [batch , k]
+
+    class_embeddings = [] 
+    for index, indices_i in enumerate(indices):
+        embeddings = []
+        for i in indices_i:
+            name = classNames[i]
+            embeddings.append(zeroshot_weights_dict[name])
+        embeddings = torch.stack(embeddings)
+        class_embeddings.append(embeddings)
+    class_embeddings = torch.stack(class_embeddings)
+
+
+    return class_embeddings # [batch, k, 1024]
 
 
 
