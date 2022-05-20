@@ -234,42 +234,9 @@ class Tip_Adapter(nn.Module):
     # x : img_features
     def forward(self, image_features):
 
-        x = self.linear1(image_features)        
+        x = self.linear1(image_features) # [batch, 1024] x [1024, cls_num * shots] = [batch, cls_num * shots]
 
-        return x
-
-class ClassProjNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.self_attention = TransformerEncoder(embed_dim=1024,
-                                  num_heads=2,
-                                  layers=1,
-                                  attn_dropout=0.1,
-                                  relu_dropout=0.1,
-                                  res_dropout=0.1,
-                                  embed_dropout=0.25,
-                                  attn_mask=True)
-        
-
-    # class_embeddings : [batch, k, 1024]
-    # images_features : [batch, 1024]
-    def forward(self, images_features, class_embeddings):
-        class_embeddings = class_embeddings.float()
-        images_features = images_features.float()
-        images_features = images_features.unsqueeze(1) # [batch, 1024] -> [batch, 1, 1024]
-
-        class_embeddings = class_embeddings.permute(1, 0, 2) # [batch, k, 1024] -> [k, batch, 1024]
-        encoded =  self.self_attention(class_embeddings) # [k, batch, 1024]
-        encoded = encoded.permute(1,2,0) # [k, batch, 1024] -> [batch, 1024, k]
-        
-        encoded = encoded / encoded.norm(dim=-1, keepdim=True)
-        
-        pred = images_features @ encoded   # [batch, 1, 1024] @ [batch, 1024, k] = [batch, 1, k]
-        pred = pred.squeeze(1) # [batch, 1, k] -> [batch, k]
-
-        return pred
-
-        
+        return x 
 
 
 def main():
@@ -548,80 +515,90 @@ def main():
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
-    # ------------------------------------------ save topK class embeddings ------------------------------------------
-    # load Adapter model
-    adapter.load_state_dict(torch.load(state_dict_save_path))
-    adapter.eval()
-
-
-
-
-    # ------------------------------------------ coarse class refine ------------------------------------------
+    # ------------------------------------------ refine by topK-class-mask ------------------------------------------
+    print(f'Starting refining..') 
     if refine == False:
         args.refine_epoch = 0
 
-    # print(f'Loading coarse classes dataset')
-    print(f'Starting refining coarse class..') 
+    adapter_extractor = Tip_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
 
-    # init Class Proj model
-    class_proj_net = ClassProjNet().cuda()
-    optimizer = torch.optim.AdamW(class_proj_net.parameters(), lr=args.refine_lr, eps=1e-5)
+    # adapter_extractor
+    # 用于提取batch样本的mask
+    adapter_extractor.load_state_dict(torch.load(state_dict_save_path))
+    adapter_extractor.eval()
+    
+    # adapter
+    # 用于第二阶段微调
+    adapter.load_state_dict(torch.load(state_dict_save_path))
+    optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.refine_epoch * len(train_loader_shuffle))
+    adapter.train()
 
-    # 冻结 tip-adapter
-    for name,param in adapter.named_parameters(): 
+    # 冻结 adapter_extractor
+    for name,param in adapter_extractor.named_parameters(): 
         param.requires_grad_(False)
     # 打印训练参数
+    for name,param in adapter_extractor.named_parameters():
+        if param.requires_grad:
+            print(f'trainable parameters: ',name)
     for name,param in adapter.named_parameters():
         if param.requires_grad:
             print(f'trainable parameters: ',name)
-    for name,param in class_proj_net.named_parameters():
-        if param.requires_grad:
-            print(f'trainable parameters: ',name)
-    
+
     alpha = args.alpha
     beta = args.beta
-    
-    class_proj_net.train()
     for train_idx in range(args.refine_epoch):
-        print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
         top1, top5, n = 0., 0., 0.
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
             images = images.cuda()
             target = target.cuda()
             with torch.no_grad():
+                # 1. extract topk mask
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
-                # get topk class names
-                new_knowledge = adapter(image_features)
+                new_knowledge = adapter_extractor(image_features)
                 new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
                 logits = 100. * image_features @ zeroshot_weights
                 logits = logits + new_logits * beta
-                class_embeddings, new_target = find_topk_classes(logits.cpu(), target.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
+                indices = logits.topk(args.topK)[1]
+                # masks_sample: [batch, class_num * k_shot]
+                # masks_class: [batch, class_num]
+                masks_sample, masks_class = topK_indices_to_mask(indices, len(imagenet_classes), k_shot) 
+                masks_sample = masks_sample.to(torch.float16).cuda()
+                masks_class = masks_class.to(torch.float16).cuda()
+            
+            # 2. finetune adapter
+            new_knowledge = adapter(image_features) 
 
-            pred = class_proj_net(image_features, class_embeddings) # [batch, class_num]
-            loss = F.cross_entropy(pred, new_target)
+            # simMatrix : [batch, k_shot*class_num] # 每个样本对训练集所有样本的相似度
+            # train_images_targets : [k_shot*class_num, class_num] (one-hot)
+            sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() * masks_sample # 盖掉topk以外类别样本的相似度值
+            new_logits =  sim_matrix @ (train_images_targets)
 
-            acc1, acc5 = accuracy(pred, new_target, topk=(1, 5))
+            # logits : [batch, class_num]
+            # image_features : [batch, image_dim]
+            # zeroshot_weights : [image_dim, class_num]
+            logits = (100. * image_features @ zeroshot_weights) * masks_class # 盖掉topk以外类别的prompts
+            logits = logits + new_logits * beta
+
+            loss = F.cross_entropy(logits, target)
+
+            acc1, acc5 = accuracy(logits, target, topk=(1, 5))
             top1 += acc1
             top5 += acc5
-            n += test_features.size(0)
+            n += len(logits)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             scheduler.step()
-
         top1 = (top1 / n) * 100
         top5 = (top5 / n) * 100
         print(f"Refining Top-1 Accuracy: {top1:.2f}")
         print(f"Refining Top-5 Accuracy: {top5:.2f}")
 
-    # print(f'Finish refining..')
-
         # test
-        continue
-        class_proj_net.eval()
+        adapter.eval()
 
         top1, top5, n = 0., 0., 0.
         with torch.no_grad():
@@ -633,10 +610,8 @@ def main():
         new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
         logits = 100. * test_features_new @ zeroshot_weights
         logits = logits + new_logits * beta
-        class_embeddings = find_topk_classes_V2(logits.cpu(), imagenet_classes, zeroshot_weights_dict, 5)
 
-        pred = class_proj_net(class_embeddings, zeroshot_weights) # [batch, class_num]
-        acc1, acc5 = accuracy(pred, test_labels, topk=(1, 5))
+        acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
         top1 += acc1
         top5 += acc5
         n += test_features.size(0)
