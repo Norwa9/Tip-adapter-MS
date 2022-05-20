@@ -287,14 +287,10 @@ def main():
     parser.add_argument('--train_epoch', type=int, default=20)
     parser.add_argument('--augment_epoch', type=int, default=10)
 
-    # model
-    parser.add_argument('--dropout', type=float, default=0.5, help='drop out rate of clip adapter')
-
     # refine
-    parser.add_argument('--topK', type=int, default=5) # 属于topK但是不属于top1的被归为粗类别
-    parser.add_argument('--coarse_class_num', type=int, default=100) # 取最常出现的前100个粗类别
-    parser.add_argument('--refine_lr', type=float, default=1e-4, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
+    parser.add_argument('--topK', type=int, default=5)
+    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
@@ -547,7 +543,14 @@ def main():
 
     alpha = args.alpha
     beta = args.beta
+    best_top1 = 0
+    best_top2 = 0
+    best_top3 = 0
+    best_top4 = 0
+    best_top5 = 0
+    best_epoch = 0
     for train_idx in range(args.refine_epoch):
+        print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
         top1, top5, n = 0., 0., 0.
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
             images = images.cuda()
@@ -572,6 +575,7 @@ def main():
 
             # simMatrix : [batch, k_shot*class_num] # 每个样本对训练集所有样本的相似度
             # train_images_targets : [k_shot*class_num, class_num] (one-hot)
+            # new_logits : [batch, class_num]
             sim_matrix = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() * masks_sample # 盖掉topk以外类别样本的相似度值
             new_logits =  sim_matrix @ (train_images_targets)
 
@@ -601,24 +605,47 @@ def main():
         adapter.eval()
 
         top1, top5, n = 0., 0., 0.
+        top2,top3,top4 = 0., 0., 0.
         with torch.no_grad():
             test_features = torch.load(test_features_path)
             test_labels = torch.load(test_targets_path)
             test_features_new = test_features.to(torch.float16)
+
+            
 
         new_knowledge = adapter(test_features_new)
         new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
         logits = 100. * test_features_new @ zeroshot_weights
         logits = logits + new_logits * beta
 
-        acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+
+        acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
         top1 += acc1
+        top2 += acc2
+        top3 += acc3
+        top4 += acc4
         top5 += acc5
         n += test_features.size(0)
         top1 = (top1 / n) * 100
+        top2 = (top2 / n) * 100
+        top3 = (top3 / n) * 100
+        top4 = (top4 / n) * 100
         top5 = (top5 / n) * 100
         print(f"Testing Top-1 Accuracy: {top1:.2f}")
+        print(f"Testing Top-2 Accuracy: {top2:.2f}")
+        print(f"Testing Top-3 Accuracy: {top3:.2f}")
+        print(f"Testing Top-4 Accuracy: {top4:.2f}")
         print(f"Testing Top-5 Accuracy: {top5:.2f}")
+
+        if top1 > best_top1:
+            best_top1 = top1
+            best_top2 = top2
+            best_top3 = top3
+            best_top4 = top4
+            best_top5 = top5
+            best_epoch = train_idx + 1
+        
+    print(f"Best Testing Top-1,2,4,5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ Search ------------------------------------------
     if search:
@@ -659,7 +686,7 @@ def main():
 
 
 
-# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter_topk_transform_SA.py
+# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/MultiStage_Adapter_topkMask.py
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = '3'
     os.environ["CUDA_LAUNCH_BLOCKING"] = '1'

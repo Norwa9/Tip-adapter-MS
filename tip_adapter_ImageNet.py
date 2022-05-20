@@ -215,7 +215,7 @@ def zeroshot_classifier(classnames, templates, model):
             class_embedding = class_embeddings.mean(dim=0)
             class_embedding /= class_embedding.norm()
             zeroshot_weights.append(class_embedding)
-        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda()
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda().to(torch.float16)
     return zeroshot_weights
 
 
@@ -223,7 +223,7 @@ class Weight_Adapter(nn.Module):
     def __init__(self, clip_model, train_features_path, cls_num, shots):
         super().__init__()
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
-        self.linear1.weight = nn.Parameter(torch.load(train_features_path).t())
+        self.linear1.weight = nn.Parameter(torch.load(train_features_path).t().to(torch.float16))
 
 
 def main():
@@ -348,7 +348,7 @@ def main():
         torch.save(train_images_targets, train_targets_path)
 
     else:
-        train_images_features_agg = torch.load(train_features_path)
+        train_images_features_agg = torch.load(train_features_path).to(torch.float16)
         train_images_targets = torch.load(train_targets_path)
 
 
@@ -373,7 +373,7 @@ def main():
         torch.save(test_labels, test_targets_path)
    
     else:
-        test_features = torch.load(test_features_path)
+        test_features = torch.load(test_features_path).to(torch.float16)
         test_labels = torch.load(test_targets_path)
 
 
@@ -474,6 +474,7 @@ def main():
             with torch.no_grad():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True)
+                image_features = image_features.to(torch.float16)
 
             new_knowledge = adapter.linear1(image_features)
             new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
@@ -501,24 +502,33 @@ def main():
         adapter.eval()
 
         top1, top5, n = 0., 0., 0.
+        top2,top3,top4 = 0., 0., 0.
         with torch.no_grad():
             test_features = torch.load(test_features_path)
             test_labels = torch.load(test_targets_path)
-            test_features_new = test_features
+            test_features_new = test_features.to(torch.float16)
 
         new_knowledge = adapter.linear1(test_features_new)
         new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
         logits = 100. * test_features_new @ zeroshot_weights
         logits = logits + new_logits * beta
-        acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+        acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
         top1 += acc1
+        top2 += acc2
+        top3 += acc3
+        top4 += acc4
         top5 += acc5
         n += test_features.size(0)
         top1 = (top1 / n) * 100
+        top2 = (top2 / n) * 100
+        top3 = (top3 / n) * 100
+        top4 = (top4 / n) * 100
         top5 = (top5 / n) * 100
-        text = f"Testing Top-1 Accuracy: {top1:.2f}"
-        print(text)
-        print()
+        print(f"Testing Top-1 Accuracy: {top1:.2f}")
+        print(f"Testing Top-2 Accuracy: {top2:.2f}")
+        print(f"Testing Top-3 Accuracy: {top3:.2f}")
+        print(f"Testing Top-4 Accuracy: {top4:.2f}")
+        print(f"Testing Top-5 Accuracy: {top5:.2f}")
 
         if top1 > best_top1:
             best_top1 = top1

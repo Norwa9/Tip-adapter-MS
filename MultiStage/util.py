@@ -149,7 +149,7 @@ def topK_indices_to_mask(batch_topk_indices:torch.tensor, class_num = 1000, shot
     
     
     masks_sample = masks_class.unsqueeze(2)
-    masks_sample = masks_sample.repeat(1,1,16)
+    masks_sample = masks_sample.repeat(1,1,shot)
     masks_sample = masks_sample.view(batch_size, -1)
 
 
