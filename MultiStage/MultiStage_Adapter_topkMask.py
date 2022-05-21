@@ -289,8 +289,8 @@ def main():
 
     # refine
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-4, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
     print(args)
