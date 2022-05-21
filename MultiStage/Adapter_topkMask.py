@@ -269,7 +269,7 @@ def main():
 
     load_train = True
     load_test = True
-    load_adapter = True
+    load_adapter = False
     refine = True
     # search = True
     load_text_features = True # zero_shot_weights
@@ -459,8 +459,19 @@ def main():
 
                 # logits : [batch, class_num]
                 # zeroshot_weights : [image_dim, class_num]
-                logits = 100. * image_features @ zeroshot_weights 
-                logits = logits + new_logits * beta
+                zero_shot_logits = 100. * image_features @ zeroshot_weights 
+                logits = zero_shot_logits + new_logits * beta
+
+                # masks_sample: [batch, class_num * k_shot]
+                # masks_class: [batch, class_num]
+                masks_sample, masks_class = topK_indices_to_mask_V2(logits, target, len(imagenet_classes), args.topK, k_shot) 
+                masks_sample = masks_sample.to(torch.float16).cuda()
+                masks_class = masks_class.to(torch.float16).cuda()
+
+                sim_matrix = sim_matrix * masks_sample
+                new_logits = sim_matrix @ (train_images_targets)
+                zero_shot_logits = zero_shot_logits * masks_class
+                logits = new_logits + zero_shot_logits
 
                 loss = F.cross_entropy(logits, target)
                 loss_value = loss.item()
@@ -505,14 +516,15 @@ def main():
             if top1 > best_top1:
                 best_top1 = top1
                 best_epoch = train_idx + 1
-                print(f'Saving best model..')
+                # print(f'Saving best model..')
                 # Saving best model
-                torch.save(adapter.state_dict(), state_dict_save_path)
+                # torch.save(adapter.state_dict(), state_dict_save_path)
                 print() # \n
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ refine by topK-class-mask ------------------------------------------
+    return
     print(f'Starting refining..') 
     if refine == False:
         args.refine_epoch = 0

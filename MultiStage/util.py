@@ -156,6 +156,25 @@ def topK_indices_to_mask(batch_topk_indices:torch.tensor, class_num = 1000, shot
     return masks_sample, masks_class
 
 
+def topK_indices_to_mask_V2(logits:torch.tensor, target:torch.tensor, class_num = 1000, topK = 5, shot = 16):
+    batch_topk_indices = logits.topk(topK)[1]
+    batch_size = batch_topk_indices.shape[0]
+    masks_class = torch.zeros(batch_size, class_num)
+
+    for index, indices in enumerate(batch_topk_indices):
+        for i in indices:
+            masks_class[index][i] = 1
+            masks_class[index][target[index]] = 1 
+    
+    
+    masks_sample = masks_class.unsqueeze(2)
+    masks_sample = masks_sample.repeat(1,1,shot)
+    masks_sample = masks_sample.view(batch_size, -1)
+
+
+    return masks_sample, masks_class
+
+
 
 # ----------------------------------dict----------------------------------
 '''
