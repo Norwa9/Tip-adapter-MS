@@ -269,15 +269,15 @@ def main():
 
     load_train = True
     load_test = True
-    load_adapter = True
+    # load_adapter = True
     refine = True
-    # search = True
+    search = True
     load_text_features = True # zero_shot_weights
     
     
 
     # ~~~~~~~~~~~~~~~~~~
-    k_shot = 16
+    k_shot = 8
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
@@ -448,6 +448,7 @@ def main():
                 with torch.no_grad():
                     image_features = model.encode_image(images)
                     image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
+                    image_features = image_features.to(torch.float16)
 
                 # linear1: [image_dim, k_shot*class_num]
                 new_knowledge = adapter(image_features) # [batch, k_shot*class_num]
@@ -559,6 +560,7 @@ def main():
                 # 1. extract topk mask
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
+                image_features = image_features.to(torch.float16)
                 new_knowledge = adapter_extractor(image_features)
                 new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
                 logits = 100. * image_features @ zeroshot_weights

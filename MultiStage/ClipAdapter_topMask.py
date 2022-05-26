@@ -275,11 +275,12 @@ def main():
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lr', type=float, default=0.001, help='lr')
+    parser.add_argument('--lr', type=float, default=0.0001, help='lr')
     parser.add_argument('--refine_lr', type=float, default=2e-5, help='lr')
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--train_epoch', type=int, default=5)
+    parser.add_argument('--topK', type=int, default=5)
+    parser.add_argument('--train_epoch', type=int, default=20)
     parser.add_argument('--refine_epoch', type=int, default=2, help='finetune epoch for corase classes samples')
     parser.add_argument('--augment_epoch', type=int, default=10)
     args = parser.parse_args()
@@ -415,8 +416,6 @@ def main():
         best_top1 = 0
         best_epoch = 0
 
-        topK_corase_classes_list = init_corase_class_list(class_num=1000)
-
         for train_idx in range(args.train_epoch):
             adapter.train()
             correct_all = 0
@@ -506,7 +505,7 @@ def main():
         
         print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
-    
+
     # ------------------------------------------ Search ------------------------------------------
     if search:
         print("Begin to search")

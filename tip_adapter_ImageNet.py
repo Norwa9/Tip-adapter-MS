@@ -247,7 +247,7 @@ def main():
     search = False
 
     # ~~~~~~~~~~~~~~~~~~
-    k_shot = 16
+    k_shot = 8
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
@@ -309,7 +309,7 @@ def main():
 
     # ------------------------------------------getting text feature------------------------------------------
     print('start getting text features.')
-    zeroshot_weights = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
+    zeroshot_weights = zeroshot_classifier(imagenet_classes, imagenet_templates, model).to(torch.float16)
     print('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
@@ -553,6 +553,7 @@ def main():
                 test_features = torch.load(test_features_path)
                 test_labels = torch.load(test_targets_path)
                 test_features_new = test_features
+                test_features_new = test_features_new.to(torch.float16)
             new_knowledge = adapter.linear1(test_features_new)
             new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ (train_images_targets)
             logits = 100. * test_features_new @ zeroshot_weights
@@ -577,5 +578,6 @@ def main():
 
 # python tip_adapter_ImageNet.py
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
     main()
 
