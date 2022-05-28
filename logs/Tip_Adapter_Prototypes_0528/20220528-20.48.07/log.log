@@ -1,0 +1,45 @@
+2022-05-28 12:48:07:INFO:Namespace(alpha=1, augment_epoch=10, beta=1.17, lr=0.004, train_epoch=20)
+2022-05-28 12:48:15:INFO:1000 classes, 7 templates
+2022-05-28 12:48:19:INFO:Load data finished.
+2022-05-28 12:48:20:INFO:Find saved text features.
+2022-05-28 12:48:20:INFO:finish getting text features. start getting image features
+2022-05-28 12:48:20:INFO:start saving training image features
+2022-05-28 12:48:20:INFO:start saving testing image features
+2022-05-28 12:48:20:INFO:Start fintuning adapter parameters..
+2022-05-28 12:48:20:INFO:Train time: 1 / 20
+2022-05-28 12:48:45:INFO:LR: 0.003975, Acc: 0.5955 (9528.0/16000), Loss: 1.5738
+2022-05-28 12:48:49:INFO:Testing Top-1 Accuracy: 62.29
+2022-05-28 12:48:49:INFO:Saving best model..
+2022-05-28 12:48:49:INFO:Train time: 2 / 20
+2022-05-28 12:49:13:INFO:LR: 0.003902, Acc: 0.6196 (9914.0/16000), Loss: 1.4800
+2022-05-28 12:49:17:INFO:Testing Top-1 Accuracy: 63.17
+2022-05-28 12:49:17:INFO:Saving best model..
+2022-05-28 12:49:17:INFO:Train time: 3 / 20
+2022-05-28 12:49:40:INFO:LR: 0.003782, Acc: 0.6333 (10133.0/16000), Loss: 1.4028
+2022-05-28 12:49:44:INFO:Testing Top-1 Accuracy: 63.60
+2022-05-28 12:49:44:INFO:Saving best model..
+2022-05-28 12:49:44:INFO:Train time: 4 / 20
+2022-05-28 12:50:07:INFO:LR: 0.003618, Acc: 0.6566 (10506.0/16000), Loss: 1.3203
+2022-05-28 12:50:11:INFO:Testing Top-1 Accuracy: 63.93
+2022-05-28 12:50:11:INFO:Saving best model..
+2022-05-28 12:50:11:INFO:Train time: 5 / 20
+2022-05-28 12:50:35:INFO:LR: 0.003414, Acc: 0.6846 (10954.0/16000), Loss: 1.2181
+2022-05-28 12:50:40:INFO:Testing Top-1 Accuracy: 64.03
+2022-05-28 12:50:40:INFO:Saving best model..
+2022-05-28 12:50:40:INFO:Train time: 6 / 20
+2022-05-28 12:51:04:INFO:LR: 0.003176, Acc: 0.7069 (11310.0/16000), Loss: 1.1173
+2022-05-28 12:51:08:INFO:Testing Top-1 Accuracy: 64.18
+2022-05-28 12:51:08:INFO:Saving best model..
+2022-05-28 12:51:08:INFO:Train time: 7 / 20
+2022-05-28 12:51:33:INFO:LR: 0.002908, Acc: 0.7324 (11718.0/16000), Loss: 1.0138
+2022-05-28 12:51:38:INFO:Testing Top-1 Accuracy: 64.05
+2022-05-28 12:51:38:INFO:Train time: 8 / 20
+2022-05-28 12:52:01:INFO:LR: 0.002618, Acc: 0.7648 (12237.0/16000), Loss: 0.8938
+2022-05-28 12:52:05:INFO:Testing Top-1 Accuracy: 63.93
+2022-05-28 12:52:05:INFO:Train time: 9 / 20
+2022-05-28 12:52:28:INFO:LR: 0.002313, Acc: 0.7944 (12710.0/16000), Loss: 0.7932
+2022-05-28 12:52:32:INFO:Testing Top-1 Accuracy: 63.53
+2022-05-28 12:52:32:INFO:Train time: 10 / 20
+2022-05-28 12:52:55:INFO:LR: 0.002000, Acc: 0.8210 (13136.0/16000), Loss: 0.6924
+2022-05-28 12:52:59:INFO:Testing Top-1 Accuracy: 62.94
+2022-05-28 12:52:59:INFO:Train time: 11 / 20

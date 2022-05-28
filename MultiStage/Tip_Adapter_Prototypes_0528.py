@@ -243,7 +243,10 @@ class Tip_Adapter(nn.Module):
 
 
     # x : [batch, 1024]
-    def forward(self, x, labels):
+    def forward(self, x, labels, alpha=None,beta=None):
+        if alpha: # search 阶段
+            self.alpha = alpha
+            self.beta = beta
         sim =  x @ self.proto.T # [batch, 1024] x [1024, cls_num] = [batch, cls_num]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim.to(torch.float16))).exp() * self.beta
         zero_shot_logits = 100. * x @ self.zero_shots_weight 
@@ -263,15 +266,21 @@ class Tip_Adapter(nn.Module):
 
     def cal_ins_pro_loss(self, x, labels):
         # instance-prototype loss
+
         sim_mat = self.sim(x, self.proto)
-        sim_mat = torch.exp(sim_mat) # [batch, num_class],每一行是每个样本与所有类中心的相似度分布
-        batch = sim_mat.shape[0] 
-        loss = 0.
-        for i in range(batch):
-            pos_score = sim_mat[i][labels[i]]
-            all_score = sim_mat[i,:].sum()
-            loss += - torch.log(pos_score / all_score)
-        loss = loss / (batch * self.cls_num * self.cls_num) # (?)
+        sim_mat = torch.exp(sim_mat) # [batch, num_class],每一行是每个样本与所有类中心的距离
+        
+        # labels : [batch]
+        batch = sim_mat.shape[0]
+        index = torch.arange(batch)
+        pos_score = sim_mat[index, labels] # [batch] ， 每行是每个样本与其对应类中心的距离
+
+        all_score = torch.sum(sim_mat,dim=-1) # [batch]， 每行是每个样本与所有类中心距离之和
+
+        loss = - torch.log(pos_score / all_score) # 每个样本都要与其类中心最接近
+        loss = torch.sum(loss)
+        
+        loss = loss / (batch * self.cls_num * self.cls_num)
 
         return loss
 
@@ -312,14 +321,14 @@ def main():
     
     parser = argparse.ArgumentParser()
     # lr 
-    parser.add_argument('--lr', type=float, default=0.002, help='lr')
+    parser.add_argument('--lr', type=float, default=0.0015, help='lr')
     
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
     
     # epoch
-    parser.add_argument('--train_epoch', type=int, default=20)
+    parser.add_argument('--train_epoch', type=int, default=40)
     
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
@@ -348,7 +357,7 @@ def main():
     logger.info(f"{len(imagenet_classes)} classes, {len(imagenet_templates)} templates")
 
     images = torchvision.datasets.ImageNet(data_path, split='val', transform=preprocess)
-    loader = torch.utils.data.DataLoader(images, batch_size=64, num_workers=8, shuffle=False) # 50000张图片作为测试集  by luowei
+    loader = torch.utils.data.DataLoader(images, batch_size=64, num_workers=8, shuffle=False) # 50000张图片作为测试集
 
     train_tranform = transforms.Compose([
         transforms.RandomResizedCrop(size=224, scale=(0.5, 1), interpolation=transforms.InterpolationMode.BICUBIC),
@@ -546,7 +555,7 @@ def main():
                     test_labels = torch.load(test_targets_path)
                     test_features_new = test_features.to(torch.float16)
 
-                logits, _ = adapter(test_features_new, test_labels)
+                logits, _ = adapter(test_features_new, test_labels,alpha,beta)
                 # measure accuracy
                 acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
                 batch_idx += 1
