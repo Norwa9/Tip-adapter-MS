@@ -1,0 +1,12 @@
+2022-05-28 03:25:12:INFO:Namespace(alpha=1, augment_epoch=10, beta=1.17, lr=0.0001, refine_epoch=20, refine_lr=0.0001, topK=5, train_epoch=40)
+2022-05-28 03:25:21:INFO:1000 classes, 7 templates
+2022-05-28 03:25:26:INFO:Load data finished.
+2022-05-28 03:25:26:INFO:Find saved text features.
+2022-05-28 03:25:26:INFO:finish getting text features. start getting image features
+2022-05-28 03:25:26:INFO:start saving training image features
+2022-05-28 03:25:26:INFO:start saving testing image features
+2022-05-28 03:25:27:INFO:Start fintuning adapter parameters..
+2022-05-28 03:25:27:INFO:Train time: 1 / 40
+2022-05-28 03:25:52:INFO:LR: 0.000100, Acc: 0.5906 (9449.0/16000), Loss: 1.5963
+2022-05-28 03:25:52:INFO:Testing Top-1 Accuracy: 60.83
+2022-05-28 03:25:52:INFO:Saving best model..

@@ -290,7 +290,7 @@ def main():
 
     # refine
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=1e-4, help='lr')
     parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
@@ -589,6 +589,8 @@ def main():
             # zeroshot_weights : [image_dim, class_num]
             logits = (100. * image_features @ zeroshot_weights) * masks_class # 盖掉topk以外类别的prompts
             logits = logits + new_logits * beta
+
+            
 
             loss = F.cross_entropy(logits, target)
 

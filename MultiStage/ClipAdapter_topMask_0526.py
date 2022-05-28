@@ -233,7 +233,7 @@ class CLIP_Tip_Adapter(nn.Module):
         self.clip_adapter = nn.Sequential(
             nn.Linear(1024, 1024, bias=False),
             nn.ReLU(),
-            nn.Dropout(p=0.5)
+            # nn.Dropout(p=0.5)
         ).to(torch.float16)
 
         self.linear1 = nn.Linear(1024, cls_num * shots, bias=False).to(clip_model.dtype)
@@ -260,7 +260,7 @@ def main():
     test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
-    state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/MultiStage_Adapter_topkMask_0526.pt"
+    state_dict_save_path = f"/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/{py_filename}.pt"
 
     zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
     zeroshot_weights_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights_dict.pt"
@@ -273,7 +273,7 @@ def main():
 
     load_train = True
     load_test = True
-    load_adapter = True
+    # load_adapter = True
     refine = True
     load_text_features = True
     
@@ -514,7 +514,6 @@ def main():
                 best_epoch = train_idx
                 logger.info(f'Saving best model..')
                 torch.save(adapter.state_dict(), state_dict_save_path)
-                logger.info() # \n
         
         logger.info(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 

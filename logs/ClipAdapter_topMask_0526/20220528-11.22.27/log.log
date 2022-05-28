@@ -8,3 +8,43 @@
 2022-05-28 03:22:48:INFO:Loading fintuned adapter parameters..
 2022-05-28 03:22:48:INFO:trainable parameters: clip_adapter.0.weight
 2022-05-28 03:22:48:INFO:Refine time: 1 / 20
+2022-05-28 03:23:09:INFO:Refining Top-1 Accuracy: 61.31
+2022-05-28 03:23:09:INFO:Refining Top-5 Accuracy: 91.97
+2022-05-28 03:23:09:INFO:Testing Top-1 Accuracy: 61.16
+2022-05-28 03:23:09:INFO:Testing Top-2 Accuracy: 75.15
+2022-05-28 03:23:09:INFO:Testing Top-3 Accuracy: 81.48
+2022-05-28 03:23:09:INFO:Testing Top-4 Accuracy: 85.05
+2022-05-28 03:23:09:INFO:Testing Top-5 Accuracy: 87.47
+2022-05-28 03:23:09:INFO:Refine time: 2 / 20
+2022-05-28 03:23:31:INFO:Refining Top-1 Accuracy: 60.44
+2022-05-28 03:23:31:INFO:Refining Top-5 Accuracy: 92.09
+2022-05-28 03:23:31:INFO:Testing Top-1 Accuracy: 61.03
+2022-05-28 03:23:31:INFO:Testing Top-2 Accuracy: 75.04
+2022-05-28 03:23:31:INFO:Testing Top-3 Accuracy: 81.39
+2022-05-28 03:23:31:INFO:Testing Top-4 Accuracy: 84.99
+2022-05-28 03:23:31:INFO:Testing Top-5 Accuracy: 87.39
+2022-05-28 03:23:31:INFO:Refine time: 3 / 20
+2022-05-28 03:23:57:INFO:Refining Top-1 Accuracy: 60.30
+2022-05-28 03:23:57:INFO:Refining Top-5 Accuracy: 91.83
+2022-05-28 03:23:57:INFO:Testing Top-1 Accuracy: 60.98
+2022-05-28 03:23:57:INFO:Testing Top-2 Accuracy: 75.05
+2022-05-28 03:23:57:INFO:Testing Top-3 Accuracy: 81.39
+2022-05-28 03:23:57:INFO:Testing Top-4 Accuracy: 84.99
+2022-05-28 03:23:57:INFO:Testing Top-5 Accuracy: 87.37
+2022-05-28 03:23:57:INFO:Refine time: 4 / 20
+2022-05-28 03:24:18:INFO:Refining Top-1 Accuracy: 60.67
+2022-05-28 03:24:18:INFO:Refining Top-5 Accuracy: 92.13
+2022-05-28 03:24:19:INFO:Testing Top-1 Accuracy: 61.02
+2022-05-28 03:24:19:INFO:Testing Top-2 Accuracy: 75.09
+2022-05-28 03:24:19:INFO:Testing Top-3 Accuracy: 81.41
+2022-05-28 03:24:19:INFO:Testing Top-4 Accuracy: 85.02
+2022-05-28 03:24:19:INFO:Testing Top-5 Accuracy: 87.40
+2022-05-28 03:24:19:INFO:Refine time: 5 / 20
+2022-05-28 03:24:43:INFO:Refining Top-1 Accuracy: 60.54
+2022-05-28 03:24:43:INFO:Refining Top-5 Accuracy: 91.96
+2022-05-28 03:24:43:INFO:Testing Top-1 Accuracy: 61.13
+2022-05-28 03:24:43:INFO:Testing Top-2 Accuracy: 75.16
+2022-05-28 03:24:43:INFO:Testing Top-3 Accuracy: 81.48
+2022-05-28 03:24:43:INFO:Testing Top-4 Accuracy: 85.06
+2022-05-28 03:24:43:INFO:Testing Top-5 Accuracy: 87.42
+2022-05-28 03:24:43:INFO:Refine time: 6 / 20
