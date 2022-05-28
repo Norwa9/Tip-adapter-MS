@@ -253,15 +253,15 @@ class Tip_Adapter(nn.Module):
 
         logits = new_knowledges + zero_shot_logits
         
-        loss_proto = self.cal_ins_pro_loss(x,labels)
+        loss_proto = self.cal_ins_pro_loss(x,labels) * 10e6
 
         return logits, loss_proto
     
     def sim(self, x, y):
-        # norm_x = F.normalize(x, dim=-1)
-        # norm_y = F.normalize(y, dim=-1)
-        norm_x = x
-        norm_y = y
+        norm_x = F.normalize(x, dim=-1)
+        norm_y = F.normalize(y, dim=-1)
+        # norm_x = x
+        # norm_y = y
         return torch.matmul(norm_x, norm_y.transpose(1,0))
 
     def cal_ins_pro_loss(self, x, labels):
