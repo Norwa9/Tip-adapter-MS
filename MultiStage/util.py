@@ -1,6 +1,12 @@
 import torch
 import numpy as np
 import torch.nn as nn 
+from time import time
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
+import logging
+import os
 
 # ----------------------------------粗类别----------------------------------
 '''
@@ -174,7 +180,46 @@ def topK_indices_to_mask_V2(logits:torch.tensor, target:torch.tensor, class_num 
 
     return masks_sample, masks_class
 
+def get_logger(log_dir):
+    # set log path
+    SHA_TZ = timezone(
+        timedelta(hours=8),
+        name='Asia/Shanghai',
+    )
+    utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
+    beijing_now = utc_now.astimezone(SHA_TZ)
+    cur_time = beijing_now.strftime('%Y%m%d-%H.%M.%S')
+    log_file_dir = f'logs/{log_dir}/{cur_time}'
+    make_dir(log_file_dir)
+    log_file_path = os.path.join(log_file_dir,'log.log')
 
+    # set logging
+    logger = logging.getLogger() 
+    logger.setLevel(logging.INFO)
+
+    for ph in logger.handlers:
+        logger.removeHandler(ph)
+    # add FileHandler to log file
+    formatter_file = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    fh = logging.FileHandler(log_file_path)
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter_file)
+    logger.addHandler(fh)
+    # add StreamHandler to terminal outputs
+    formatter_stream = logging.Formatter('%(message)s')
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter_stream)
+    logger.addHandler(ch)
+    return logger
+
+def make_dir(path):
+
+    folder =  os.path.exists(path)
+    
+    assert not folder
+    
+    os.makedirs(path)
 
 # ----------------------------------dict----------------------------------
 '''

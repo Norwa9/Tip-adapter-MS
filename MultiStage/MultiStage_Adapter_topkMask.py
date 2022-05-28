@@ -14,6 +14,8 @@ import argparse
 from util import *
 from modules.transformer import TransformerEncoder
 import time
+import sys
+import logging
 
 
 print("Torch version:", torch.__version__)
@@ -241,6 +243,8 @@ class Tip_Adapter(nn.Module):
 
 
 def main():
+    py_filename = os.path.basename(sys.argv[0]).split(".")[0]
+    logger = get_logger(log_dir=py_filename)
 
     # Path for ImageNet
     data_path = "/data/lglFewShot/ImageNet"
@@ -252,10 +256,7 @@ def main():
     test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
-    state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/topk_transform_state_dict.pt"
-    coarse_classes_indices_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/classed_indices.pt"
-
-    topK_class_embeddings_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/topK_class_embeddings.pt"
+    state_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/MultiStage_Adapter_topkMask.pt"
 
     zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
     zeroshot_weights_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights_dict.pt"
@@ -269,15 +270,15 @@ def main():
 
     load_train = True
     load_test = True
-    # load_adapter = True
+    load_adapter = True
     refine = True
-    search = True
+    # search = True
     load_text_features = True # zero_shot_weights
     
     
 
     # ~~~~~~~~~~~~~~~~~~
-    k_shot = 8
+    k_shot = 16
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
@@ -289,11 +290,13 @@ def main():
 
     # refine
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_lr', type=float, default=1e-4, help='lr')
-    parser.add_argument('--refine_epoch', type=int, default=10, help='finetune epoch for corase classes samples')
+    parser.add_argument('--refine_lr', type=float, default=1e-5, help='lr')
+    parser.add_argument('--refine_epoch', type=int, default=20, help='finetune epoch for corase classes samples')
     
     args = parser.parse_args()
-    print(args)
+    logger.info(args)
+
+    
 
     clip.available_models()
     name = 'RN50'
@@ -313,7 +316,7 @@ def main():
     random.seed(1)
     torch.manual_seed(1)
 
-    print(f"{len(imagenet_classes)} classes, {len(imagenet_templates)} templates")
+    logger.info(f"{len(imagenet_classes)} classes, {len(imagenet_templates)} templates")
 
     images = torchvision.datasets.ImageNet(data_path, split='val', transform=preprocess)
     loader = torch.utils.data.DataLoader(images, batch_size=64, num_workers=8, shuffle=False) # 50000张图片作为测试集  by luowei
@@ -328,7 +331,7 @@ def main():
                                                  transform=train_tranform)
     split_by_label_dict = defaultdict(list)
 
-    print('Load data finished.')
+    logger.info('Load data finished.')
     for i in range(len(train_images.imgs)):
         split_by_label_dict[train_images.targets[i]].append(train_images.imgs[i])
     imgs = []
@@ -345,18 +348,18 @@ def main():
 
     # ------------------------------------------getting text feature------------------------------------------
     if not load_text_features:
-        print('start getting text features.')
+        logger.info('start getting text features.')
         zeroshot_weights, zeroshot_weights_dict = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
         torch.save(zeroshot_weights,zeroshot_weights_save_path)
         torch.save(zeroshot_weights_dict, zeroshot_weights_dict_save_path)
     else:
-        print('Find saved text features.')
+        logger.info('Find saved text features.')
         zeroshot_weights = torch.load(zeroshot_weights_save_path)
         zeroshot_weights_dict = torch.load(zeroshot_weights_dict_save_path)
-    print('finish getting text features. start getting image features')
+    logger.info('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
-    print('start saving training image features')
+    logger.info('start saving training image features')
 
     if not load_train:
         
@@ -367,7 +370,7 @@ def main():
             for augment_idx in range(args.augment_epoch):
                 train_images_features = []
 
-                print('Augment time: {:} / {:}'.format(augment_idx, args.augment_epoch))
+                logger.info('Augment time: {:} / {:}'.format(augment_idx, args.augment_epoch))
                 for i, (images, target) in enumerate(tqdm(train_loader)):
                     images = images.cuda()
                     image_features = model.encode_image(images)
@@ -396,7 +399,7 @@ def main():
 
 
     # ------------------------------------------saving testing features------------------------------------------
-    print('start saving testing image features')
+    logger.info('start saving testing image features')
     
     if not load_test:
         test_features = []
@@ -423,9 +426,9 @@ def main():
     # ------------------------------------------ Tip-Adapter-F ------------------------------------------
     adapter = Tip_Adapter(args=args,clip_model=model, train_features_path=train_features_path, cls_num=len(imagenet_classes), shots=k_shot).cuda()
     if load_adapter:
-        print(f'Loading fintuned adapter parameters..')
+        logger.info(f'Loading fintuned adapter parameters..')
     else:
-        print(f'Start fintuning adapter parameters..')
+        logger.info(f'Start fintuning adapter parameters..')
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
         
@@ -437,7 +440,7 @@ def main():
             correct_all = 0
             n = 0
             loss_list = []
-            print('Train time: {:} / {:}'.format(train_idx+1, args.train_epoch))
+            logger.info('Train time: {:} / {:}'.format(train_idx+1, args.train_epoch))
             
             alpha = args.alpha
             beta = args.beta
@@ -478,7 +481,7 @@ def main():
             current_lr = scheduler.get_last_lr()[0]
             text = 'LR: {:.6f}, Acc: {:.4f} ({:}/{:}), Loss: {:.4f}'.format(current_lr, correct_all / n, correct_all, n,
                                                                         sum(loss_list)/len(loss_list))
-            print(text)
+            logger.info(text)
 
 
             # eval
@@ -500,21 +503,21 @@ def main():
             n += test_features.size(0)
             top1 = (top1 / n) * 100
             top5 = (top5 / n) * 100
-            print(f"Testing Top-1 Accuracy: {top1:.2f}")
-            print(f"Testing Top-5 Accuracy: {top5:.2f}")
+            logger.info(f"Testing Top-1 Accuracy: {top1:.2f}")
+            logger.info(f"Testing Top-5 Accuracy: {top5:.2f}")
 
             if top1 > best_top1:
                 best_top1 = top1
                 best_epoch = train_idx + 1
-                print(f'Saving best model..')
+                logger.info(f'Saving best model..')
                 # Saving best model
                 torch.save(adapter.state_dict(), state_dict_save_path)
-                print() # \n
+                logger.info() # \n
         
-        print(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
+        logger.info(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ refine by topK-class-mask ------------------------------------------
-    print(f'Starting refining..') 
+    logger.info(f'Starting refining..') 
     if refine == False:
         args.refine_epoch = 0
         
@@ -537,10 +540,10 @@ def main():
     # 打印训练参数
     for name,param in adapter_extractor.named_parameters():
         if param.requires_grad:
-            print(f'trainable parameters: ',name)
+            logger.info(f'trainable parameters: {name}')
     for name,param in adapter.named_parameters():
         if param.requires_grad:
-            print(f'trainable parameters: ',name)
+            logger.info(f'trainable parameters: {name}')
 
     alpha = args.alpha
     beta = args.beta
@@ -551,7 +554,7 @@ def main():
     best_top5 = 0
     best_epoch = 0
     for train_idx in range(args.refine_epoch):
-        print('Refine time: {:} / {:}'.format(train_idx+1, args.refine_epoch))
+        logger.info(f'Refine time: {train_idx+1} / {args.refine_epoch}')
         top1, top5, n = 0., 0., 0.
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
             images = images.cuda()
@@ -600,8 +603,8 @@ def main():
             scheduler.step()
         top1 = (top1 / n) * 100
         top5 = (top5 / n) * 100
-        print(f"Refining Top-1 Accuracy: {top1:.2f}")
-        print(f"Refining Top-5 Accuracy: {top5:.2f}")
+        logger.info(f"Refining Top-1 Accuracy: {top1:.2f}")
+        logger.info(f"Refining Top-5 Accuracy: {top5:.2f}")
 
         # test
         adapter.eval()
@@ -633,11 +636,11 @@ def main():
         top3 = (top3 / n) * 100
         top4 = (top4 / n) * 100
         top5 = (top5 / n) * 100
-        print(f"Testing Top-1 Accuracy: {top1:.2f}")
-        print(f"Testing Top-2 Accuracy: {top2:.2f}")
-        print(f"Testing Top-3 Accuracy: {top3:.2f}")
-        print(f"Testing Top-4 Accuracy: {top4:.2f}")
-        print(f"Testing Top-5 Accuracy: {top5:.2f}")
+        logger.info(f"Testing Top-1 Accuracy: {top1:.2f}")
+        logger.info(f"Testing Top-2 Accuracy: {top2:.2f}")
+        logger.info(f"Testing Top-3 Accuracy: {top3:.2f}")
+        logger.info(f"Testing Top-4 Accuracy: {top4:.2f}")
+        logger.info(f"Testing Top-5 Accuracy: {top5:.2f}")
 
         if top1 > best_top1:
             best_top1 = top1
@@ -647,11 +650,11 @@ def main():
             best_top5 = top5
             best_epoch = train_idx + 1
         
-    print(f"Best Testing Top-1,2,4,5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
+    logger.info(f"Best Testing Top-1,2,4,5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ Search ------------------------------------------
     if search:
-        print("Begin to search")
+        logger.info("Begin to search")
         alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6]
         beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
         best_top1 = 0
@@ -680,11 +683,11 @@ def main():
 
                 if top1 > best_top1:
                     text = 'New best setting, alpha: {:.2f}, beta: {:.2f}; Top-1 acc: {:.2f}'.format(alpha, beta, top1)
-                    print(text)
+                    logger.info(text)
                     best_top1 = top1
                     
 
-        print(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
+        logger.info(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
 
 
 

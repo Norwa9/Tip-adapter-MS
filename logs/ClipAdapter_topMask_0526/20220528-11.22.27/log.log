@@ -1,0 +1,10 @@
+2022-05-28 03:22:27:INFO:Namespace(alpha=1, augment_epoch=10, beta=1.17, lr=0.0001, refine_epoch=20, refine_lr=0.0001, topK=5, train_epoch=40)
+2022-05-28 03:22:42:INFO:1000 classes, 7 templates
+2022-05-28 03:22:47:INFO:Load data finished.
+2022-05-28 03:22:47:INFO:Find saved text features.
+2022-05-28 03:22:47:INFO:finish getting text features. start getting image features
+2022-05-28 03:22:47:INFO:start saving training image features
+2022-05-28 03:22:47:INFO:start saving testing image features
+2022-05-28 03:22:48:INFO:Loading fintuned adapter parameters..
+2022-05-28 03:22:48:INFO:trainable parameters: clip_adapter.0.weight
+2022-05-28 03:22:48:INFO:Refine time: 1 / 20
