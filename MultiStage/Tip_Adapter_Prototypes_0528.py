@@ -253,7 +253,7 @@ class Tip_Adapter(nn.Module):
 
         logits = new_knowledges + zero_shot_logits
         
-        loss_proto = self.cal_ins_pro_loss(x,labels) * 10e6
+        loss_proto = self.cal_ins_pro_loss(x,labels)
 
         return logits, loss_proto
     
@@ -280,7 +280,8 @@ class Tip_Adapter(nn.Module):
         loss = - torch.log(pos_score / all_score) # 每个样本都要与其类中心最接近
         loss = torch.sum(loss)
         
-        loss = loss / (batch * self.cls_num * self.cls_num)
+        # loss = loss / (batch * self.cls_num * self.cls_num)
+        loss = loss / (batch)
 
         return loss
 
