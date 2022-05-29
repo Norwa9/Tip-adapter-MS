@@ -256,3 +256,4 @@
 2022-05-29 02:28:02:INFO:New best setting, alpha: 1.00, beta: 0.76; Top-1 acc: 64.82
 2022-05-29 02:28:02:INFO:New best setting, alpha: 1.00, beta: 0.79; Top-1 acc: 64.87
 2022-05-29 02:28:02:INFO:New best setting, alpha: 1.00, beta: 0.82; Top-1 acc: 64.93
+2022-05-29 02:42:58:INFO:RN50, 16 shot. Best Top-1 64.93

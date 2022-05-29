@@ -247,7 +247,10 @@ class Tip_Adapter(nn.Module):
         if alpha: # search 阶段
             self.alpha = alpha
             self.beta = beta
+        
+        # sim = self.sim(x, self.proto) # 归一化后点乘，效果不好！
         sim =  x @ self.proto.T # [batch, 1024] x [1024, cls_num] = [batch, cls_num]
+
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim.to(torch.float16))).exp() * self.beta
         zero_shot_logits = 100. * x @ self.zero_shots_weight 
 
@@ -268,7 +271,8 @@ class Tip_Adapter(nn.Module):
         # instance-prototype loss
         t = self.args.temperature # contrastive loss temperature
 
-        sim_mat = self.sim(x, self.proto)
+        # sim_mat = self.sim(x, self.proto) # 先归一化x和proto，再点乘计算相似度
+        sim_mat =  x @ self.proto.T # 不归一化，直接点乘计算相似度
         sim_mat = torch.exp(sim_mat / t) # [batch, num_class],每一行是每个样本与所有类中心的距离
         
         # labels : [batch]
@@ -323,7 +327,7 @@ def main():
     
     parser = argparse.ArgumentParser()
     # lr 
-    parser.add_argument('--lr', type=float, default=0.002, help='lr')
+    parser.add_argument('--lr', type=float, default=0.0005, help='lr')
     
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
