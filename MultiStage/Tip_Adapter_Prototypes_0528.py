@@ -207,7 +207,6 @@ def accuracy(output, target, topk=(1,)):
 def zeroshot_classifier(classnames, templates, model):
     with torch.no_grad():
         zeroshot_weights = []
-        zeroshot_weights_dict = {}
         for classname in classnames:
             texts = [template.format(classname) for template in templates]  # format with class
             texts = clip.tokenize(texts).cuda()  # tokenize
@@ -216,10 +215,8 @@ def zeroshot_classifier(classnames, templates, model):
             class_embedding = class_embeddings.mean(dim=0)
             class_embedding /= class_embedding.norm()
             zeroshot_weights.append(class_embedding)
-            zeroshot_weights_dict[classname] = class_embedding # 1024
-        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda() # [1024, len(classnames)]
-
-    return zeroshot_weights, zeroshot_weights_dict
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda()
+    return zeroshot_weights
 
 
 '''
@@ -237,7 +234,7 @@ class Tip_Adapter(nn.Module):
 
         # prototypes
         prototypes_features = torch.load(train_prototypes_path) # [cls_num, 1024]
-        self.proto = nn.Parameter(prototypes_features.to(torch.float16),requires_grad=True)
+        self.proto = nn.Parameter(prototypes_features,requires_grad=True)
 
         self.cls_num = prototypes_features.shape[0]
 
@@ -251,7 +248,7 @@ class Tip_Adapter(nn.Module):
         # sim = self.sim(x, self.proto) # 归一化后点乘，效果不好！
         sim =  x @ self.proto.T # [batch, 1024] x [1024, cls_num] = [batch, cls_num]
 
-        new_knowledges = ((-1) * (self.alpha - self.alpha * sim.to(torch.float16))).exp() * self.beta
+        new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta
         zero_shot_logits = 100. * x @ self.zero_shots_weight 
 
         logits = new_knowledges + zero_shot_logits
@@ -327,7 +324,7 @@ def main():
     
     parser = argparse.ArgumentParser()
     # lr 
-    parser.add_argument('--lr', type=float, default=0.0005, help='lr')
+    parser.add_argument('--lr', type=float, default=0.001, help='lr')
     
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
@@ -395,13 +392,11 @@ def main():
     # ------------------------------------------getting text feature------------------------------------------
     if not load_text_features:
         logger.info('start getting text features.')
-        zeroshot_weights, zeroshot_weights_dict = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
+        zeroshot_weights = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
         torch.save(zeroshot_weights,zeroshot_weights_save_path)
-        torch.save(zeroshot_weights_dict, zeroshot_weights_dict_save_path)
     else:
         logger.info('Find saved text features.')
         zeroshot_weights = torch.load(zeroshot_weights_save_path)
-        zeroshot_weights_dict = torch.load(zeroshot_weights_dict_save_path)
     logger.info('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
@@ -434,7 +429,7 @@ def main():
         train_images_features_agg /= train_images_features_agg.norm(dim=-1, keepdim=True)
         train_images_features_agg = train_images_features_agg.permute(1, 0)
 
-        train_images_targets = F.one_hot(torch.cat(train_images_targets, dim=0)).half()
+        train_images_targets = F.one_hot(torch.cat(train_images_targets, dim=0))
 
         torch.save(train_images_features_agg, train_features_path)
         torch.save(train_images_targets, train_targets_path)
@@ -498,7 +493,7 @@ def main():
                 with torch.no_grad():
                     image_features = model.encode_image(images)
                     image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
-                    image_features = image_features.to(torch.float16)
+                    image_features = image_features
 
 
                 logits, loss_proto = adapter(image_features, target)
@@ -528,7 +523,7 @@ def main():
             with torch.no_grad():
                 test_features = torch.load(test_features_path)
                 test_labels = torch.load(test_targets_path)
-                test_features_new = test_features.to(torch.float16)
+                test_features_new = test_features
 
             logits, _ = adapter(test_features_new, test_labels)
             acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
@@ -577,7 +572,7 @@ def main():
                 with torch.no_grad():
                     test_features = torch.load(test_features_path)
                     test_labels = torch.load(test_targets_path)
-                    test_features_new = test_features.to(torch.float16)
+                    test_features_new = test_features
 
                 logits, _ = adapter(test_features_new, test_labels,alpha,beta)
                 # measure accuracy
@@ -601,6 +596,6 @@ def main():
 
 # python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/Tip_Adapter_Prototypes_0528.py
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1,2'
     main()
 

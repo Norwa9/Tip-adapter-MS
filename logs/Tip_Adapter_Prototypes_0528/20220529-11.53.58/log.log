@@ -1,0 +1,33 @@
+2022-05-29 03:53:58:INFO:Namespace(alpha=1, augment_epoch=10, batch_size=256, beta=1.17, lr=0.001, temperature=0.9, train_epoch=30)
+2022-05-29 03:54:07:INFO:1000 classes, 7 templates
+2022-05-29 03:54:23:INFO:Load data finished.
+2022-05-29 03:54:24:INFO:start getting text features.
+2022-05-29 03:54:38:INFO:finish getting text features. start getting image features
+2022-05-29 03:54:38:INFO:start saving training image features
+2022-05-29 03:54:39:INFO:start saving testing image features
+2022-05-29 03:54:39:INFO:Start fintuning adapter parameters..
+2022-05-29 03:54:39:INFO:Train time: 1 / 30
+2022-05-29 03:55:02:INFO:LR: 0.000997, Acc: 0.5909 (9455.0/16000), Loss: 8.1840
+2022-05-29 03:55:03:INFO:Testing Top-1 Accuracy: 60.76
+2022-05-29 03:55:03:INFO:Testing Top-2 Accuracy: 74.75
+2022-05-29 03:55:03:INFO:Testing Top-3 Accuracy: 81.16
+2022-05-29 03:55:03:INFO:Testing Top-4 Accuracy: 84.79
+2022-05-29 03:55:03:INFO:Testing Top-5 Accuracy: 87.18
+2022-05-29 03:55:03:INFO:Saving best model..
+2022-05-29 03:55:03:INFO:Train time: 2 / 30
+2022-05-29 03:55:26:INFO:LR: 0.000989, Acc: 0.5951 (9521.0/16000), Loss: 8.0873
+2022-05-29 03:55:26:INFO:Testing Top-1 Accuracy: 61.00
+2022-05-29 03:55:26:INFO:Testing Top-2 Accuracy: 74.93
+2022-05-29 03:55:26:INFO:Testing Top-3 Accuracy: 81.28
+2022-05-29 03:55:26:INFO:Testing Top-4 Accuracy: 84.90
+2022-05-29 03:55:26:INFO:Testing Top-5 Accuracy: 87.29
+2022-05-29 03:55:26:INFO:Saving best model..
+2022-05-29 03:55:26:INFO:Train time: 3 / 30
+2022-05-29 03:55:49:INFO:LR: 0.000976, Acc: 0.5977 (9563.0/16000), Loss: 8.0000
+2022-05-29 03:55:49:INFO:Testing Top-1 Accuracy: 61.23
+2022-05-29 03:55:49:INFO:Testing Top-2 Accuracy: 75.10
+2022-05-29 03:55:49:INFO:Testing Top-3 Accuracy: 81.46
+2022-05-29 03:55:49:INFO:Testing Top-4 Accuracy: 85.02
+2022-05-29 03:55:49:INFO:Testing Top-5 Accuracy: 87.37
+2022-05-29 03:55:49:INFO:Saving best model..
+2022-05-29 03:55:49:INFO:Train time: 4 / 30

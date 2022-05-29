@@ -1,0 +1,19 @@
+2022-05-29 03:45:59:INFO:Namespace(alpha=1, augment_epoch=10, batch_size=256, beta=1.17, lr=0.001, temperature=0.9, train_epoch=30)
+2022-05-29 03:46:16:INFO:1000 classes, 7 templates
+2022-05-29 03:46:47:INFO:Load data finished.
+2022-05-29 03:46:49:INFO:Find saved text features.
+2022-05-29 03:46:49:INFO:finish getting text features. start getting image features
+2022-05-29 03:46:49:INFO:start saving training image features
+2022-05-29 03:46:49:INFO:Augment time: 0 / 10
+2022-05-29 03:47:22:INFO:Augment time: 1 / 10
+2022-05-29 03:47:44:INFO:Augment time: 2 / 10
+2022-05-29 03:48:08:INFO:Augment time: 3 / 10
+2022-05-29 03:48:31:INFO:Augment time: 4 / 10
+2022-05-29 03:48:54:INFO:Augment time: 5 / 10
+2022-05-29 03:49:16:INFO:Augment time: 6 / 10
+2022-05-29 03:49:38:INFO:Augment time: 7 / 10
+2022-05-29 03:50:02:INFO:Augment time: 8 / 10
+2022-05-29 03:50:25:INFO:Augment time: 9 / 10
+2022-05-29 03:50:50:INFO:start saving testing image features
+2022-05-29 03:51:49:INFO:Start fintuning adapter parameters..
+2022-05-29 03:51:49:INFO:Train time: 1 / 30
