@@ -229,7 +229,7 @@ class Tip_Adapter(nn.Module):
     # 用训练集初始化tip_adapter(linear1)
     def __init__(self, args, train_prototypes_path, zero_shots_weight):
         super().__init__()
-
+        self.args = args
         self.alpha = args.alpha
         self.beta=  args.beta
         self.zero_shots_weight = zero_shots_weight
@@ -266,9 +266,10 @@ class Tip_Adapter(nn.Module):
 
     def cal_ins_pro_loss(self, x, labels):
         # instance-prototype loss
+        t = self.args.temperature # contrastive loss temperature
 
         sim_mat = self.sim(x, self.proto)
-        sim_mat = torch.exp(sim_mat) # [batch, num_class],每一行是每个样本与所有类中心的距离
+        sim_mat = torch.exp(sim_mat / t) # [batch, num_class],每一行是每个样本与所有类中心的距离
         
         # labels : [batch]
         batch = sim_mat.shape[0]
@@ -322,14 +323,16 @@ def main():
     
     parser = argparse.ArgumentParser()
     # lr 
-    parser.add_argument('--lr', type=float, default=0.0015, help='lr')
+    parser.add_argument('--lr', type=float, default=0.002, help='lr')
     
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
+    parser.add_argument('--temperature', type=float, default=0.9)
     
     # epoch
-    parser.add_argument('--train_epoch', type=int, default=40)
+    parser.add_argument('--train_epoch', type=int, default=30)
+    parser.add_argument('--batch_size', type=int, default=256)
     
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
@@ -383,7 +386,7 @@ def main():
     train_images.targets = targets
     train_images.samples = imgs
     train_loader = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=False)
-    train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=256, num_workers=8, shuffle=True)
+    train_loader_shuffle = torch.utils.data.DataLoader(train_images, batch_size=args.batch_size, num_workers=8, shuffle=True)
 
     # ------------------------------------------getting text feature------------------------------------------
     if not load_text_features:
@@ -517,27 +520,43 @@ def main():
             adapter.eval()
 
             top1, top5, n = 0., 0., 0.
+            top2,top3,top4 = 0., 0., 0.
             with torch.no_grad():
                 test_features = torch.load(test_features_path)
                 test_labels = torch.load(test_targets_path)
                 test_features_new = test_features.to(torch.float16)
 
-            logits, loss_proto = adapter(test_features_new, test_labels)
-            acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
+            logits, _ = adapter(test_features_new, test_labels)
+            acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
             top1 += acc1
+            top2 += acc2
+            top3 += acc3
+            top4 += acc4
             top5 += acc5
             n += test_features.size(0)
             top1 = (top1 / n) * 100
+            top2 = (top2 / n) * 100
+            top3 = (top3 / n) * 100
+            top4 = (top4 / n) * 100
             top5 = (top5 / n) * 100
             logger.info(f"Testing Top-1 Accuracy: {top1:.2f}")
+            logger.info(f"Testing Top-2 Accuracy: {top2:.2f}")
+            logger.info(f"Testing Top-3 Accuracy: {top3:.2f}")
+            logger.info(f"Testing Top-4 Accuracy: {top4:.2f}")
+            logger.info(f"Testing Top-5 Accuracy: {top5:.2f}")
 
             if top1 > best_top1:
-                best_top1 = top1
-                best_epoch = train_idx
                 logger.info(f'Saving best model..')
                 torch.save(adapter.state_dict(), state_dict_save_path)
-        
-        logger.info(f"Best Testing Top-1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
+
+                best_top1 = top1
+                best_top2 = top2
+                best_top3 = top3
+                best_top4 = top4
+                best_top5 = top5
+                best_epoch = train_idx + 1
+            
+        logger.info(f"Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ Search ------------------------------------------
     if search:
