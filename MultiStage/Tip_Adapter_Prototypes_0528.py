@@ -314,13 +314,11 @@ def main():
     load_adapter = False
     search = False
 
-    load_train = True
+    # load_train = True
     load_test = True
     load_text_features = True
     # load_adapter = True
     search = True
-
-    k_shot = 16
     
     parser = argparse.ArgumentParser()
     # lr 
@@ -337,9 +335,12 @@ def main():
     
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
+    parser.add_argument('--k_shot', type=int, default=16)
     
     args = parser.parse_args()
     logger.info(args)
+
+    k_shot = args.k_shot
 
     clip.available_models()
     name = 'RN50'
@@ -558,6 +559,7 @@ def main():
         logger.info(f"Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ Search ------------------------------------------
+    adapter.load_state_dict(torch.load(state_dict_save_path))
     if search:
         logger.info("Begin to search")
         alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6]
@@ -566,6 +568,7 @@ def main():
         adapter.eval()
         for alpha in alpha_list:
             for beta in beta_list:
+                logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
                 top1, top5, n = 0., 0., 0.
                 batch_idx = 0
                 # predict
@@ -588,7 +591,6 @@ def main():
                     text = f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}'
                     logger.info(text)
                     best_top1 = top1
-                    
 
         logger.info(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
 
@@ -596,6 +598,6 @@ def main():
 
 # python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/Tip_Adapter_Prototypes_0528.py
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1,2'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
     main()
 
