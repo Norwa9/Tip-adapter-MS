@@ -1,0 +1,1 @@
+2022-05-30 15:43:04:INFO:Namespace(alpha=1, augment_epoch=10, batch_size=512, beta=1.17, k_shot=4, lr=0.015, temperature=0.05, train_epoch=20)

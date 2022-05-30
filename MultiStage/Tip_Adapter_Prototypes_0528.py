@@ -224,19 +224,26 @@ image_feature -> clip_adapter -> image_feature -> tip_adapter(linear1) -> probab
 '''
 class Tip_Adapter(nn.Module):
     # 用训练集初始化tip_adapter(linear1)
-    def __init__(self, args, train_prototypes_path, zero_shots_weight):
+    def __init__(self, args, train_features_path, zero_shots_weight):
         super().__init__()
         self.args = args
         self.alpha = args.alpha
         self.beta=  args.beta
         self.zero_shots_weight = zero_shots_weight
+        self.k_shot = args.k_shot
+        self.cls_num = zero_shots_weight.shape[1]
         
 
         # prototypes
-        prototypes_features = torch.load(train_prototypes_path) # [cls_num, 1024]
+        train_features = torch.load(train_features_path).T # [cls_num * k_shot, 1024]
+        prototypes_features = torch.zeros(self.cls_num, 1024) # [cls_num, 1024]
+        j = 0
+        for i in range(0,train_features.shape[0],self.k_shot):
+            prototypes_features[j] = torch.mean(train_features[i:i+self.k_shot],dim=0)
+            j+=1
         self.proto = nn.Parameter(prototypes_features,requires_grad=True)
 
-        self.cls_num = prototypes_features.shape[0]
+        
 
 
     # x : [batch, 1024]
@@ -304,9 +311,6 @@ def main():
     state_dict_save_path = f"/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/{py_filename}.pt"
 
     zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
-    zeroshot_weights_dict_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights_dict.pt"
-
-    train_prototypes_path = '/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_train_prototypes.pt'
 
     load_train = False
     load_test = False
@@ -467,7 +471,7 @@ def main():
 
 
     # ------------------------------------------ Finetune CLIP-Tip-Adapter ------------------------------------------
-    adapter = Tip_Adapter(args=args,train_prototypes_path=train_prototypes_path,zero_shots_weight=zeroshot_weights).cuda()
+    adapter = Tip_Adapter(args=args,train_features_path=train_features_path,zero_shots_weight=zeroshot_weights).cuda()
     if load_adapter:
         logger.info(f'Loading fintuned adapter parameters..')
     else:
