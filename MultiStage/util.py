@@ -180,6 +180,68 @@ def topK_indices_to_mask_V2(logits:torch.tensor, target:torch.tensor, class_num 
 
     return masks_sample, masks_class
 
+'''
+输入:一个样本的预测logits
+输出:其最接近的topK+1个prototypes的下标:
+    1.new_target:[batch], topK+1分类的下标.
+    2.origin_target:[batch,topK+1], 每个样本肯定包含其target的topK+1类下标
+'''
+def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
+    cls_num = logits.shape[1]
+    batch = logits.shape[0]
+
+    batch_topk_indices = logits.topk(topK)[1] # [batch , topK]
+    print(f'batch_topk_indices:\n{batch_topk_indices}')
+    
+    # 1. new target
+    new_target = [] # [batch]  , 取值0~topK
+    origin_target = [] # [batch, topK+1] , 取值0~cls_num-1
+    # 对于一个样本
+    # 如果其topk中有GT，则将其新标签定义为topK中GT的下标，然后再添加一个负prototype
+    # 如果其topK没有GT，则将其新标签定义为topK+1，然后添加GT
+    for index, topK_i in enumerate(batch_topk_indices):
+        origin_target_i = topK_i.numpy() # [topK]
+        target_i = target[index]
+        if target_i in topK_i:
+            new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item()
+            # 添加负prototype
+            while(1):
+                neg_index = np.random.randint(0,cls_num)
+                if neg_index not in topK_i:
+                    origin_target_i = np.append(origin_target_i, neg_index) # [topK] -> [topK+1]
+                    break
+        else:
+            new_target_i = topK
+            origin_target_i = np.append(origin_target_i, target_i) # [topK] -> [topK+1]
+        
+        new_target.append(new_target_i)
+        origin_target = np.append(origin_target, origin_target_i)
+        origin_target = origin_target.reshape(batch,-1) 
+    
+    return new_target, origin_target
+    
+'''
+输入:prototypes [cls_num, 1024]
+输出:根据proto_indices选取的prototypes:
+    proto_indices:[batch,topK+1]
+    topK_plusone_protos:[batch,topK+1,1024]
+'''
+def get_topK_plusone_protos(protos:torch.Tensor,proto_indices):
+    cls_num = protos.shape[0]
+    # proto_indices 转one-hot:
+    # proto_indices: [batch,topK+1]
+    # one_hot_proto_indices: [batch,topK+1, 1000]
+    one_hot_proto_indices = torch.zeros(proto_indices.shape[0],proto_indices.shape[1], cls_num)
+    for i,indices in enumerate(proto_indices):
+        for j,index in enumerate(indices):
+            one_hot_proto_indices[i][j][index] = 1
+    # print(one_hot_proto_indices)
+    # topK_plusone_protos 
+    topK_plusone_protos = one_hot_proto_indices @ protos # [batch,topK+1, 1000] @ [batch,1000, 1024] -> [batch,topK+1, 1024]
+    return topK_plusone_protos
+
+# ----------------------------------------other---------------------------------------------
+
 def get_logger(log_dir):
     # set log path
     SHA_TZ = timezone(
