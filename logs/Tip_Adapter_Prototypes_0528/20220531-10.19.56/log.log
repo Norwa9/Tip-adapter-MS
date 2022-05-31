@@ -1,0 +1,7 @@
+2022-05-31 02:19:56:INFO:Namespace(alpha=1, augment_epoch=10, batch_size=512, beta=1.17, k_shot=32, lr=0.015, temperature=0.05, train_epoch=20)
+2022-05-31 02:20:06:INFO:1000 classes, 7 templates
+2022-05-31 02:20:11:INFO:Load data finished.
+2022-05-31 02:20:11:INFO:Find saved text features.
+2022-05-31 02:20:11:INFO:finish getting text features. start getting image features
+2022-05-31 02:20:11:INFO:start saving training image features
+2022-05-31 02:20:11:INFO:Augment time: 0 / 10
