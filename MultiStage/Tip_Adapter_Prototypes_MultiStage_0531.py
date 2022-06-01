@@ -682,10 +682,7 @@ def main():
             batch = images.shape[0]
             images = images.cuda()
             with torch.no_grad():
-                image_features = model.encode_image(images)
-                image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
-                test_features_new = image_features
-
+                test_features_new = test_features[i * batch:(i+1)*batch, :]
                 new_target = test_new_target[i * batch:(i+1)*batch]
                 topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes[i * batch:(i+1)*batch,:,:], test_zs_weights[i * batch:(i+1)*batch,:,:]
                 new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
