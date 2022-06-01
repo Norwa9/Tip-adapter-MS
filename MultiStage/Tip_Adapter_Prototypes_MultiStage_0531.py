@@ -655,7 +655,7 @@ def main():
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
             new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
             topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
-            new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
+            new_logits = transformer(image_features, new_target, topK_plusone_protos, topK_plusone_zeroshot_weights)
             
             loss = F.cross_entropy(new_logits, new_target)
             loss_value = loss.item()
@@ -679,7 +679,7 @@ def main():
         top1, top5, n = 0., 0., 0.
         with torch.no_grad():
             topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
-            new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
+            new_ligits = transformer(test_features, test_new_target, topK_plusone_protos, topK_plusone_zeroshot_weights)
 
         acc1,acc5 = accuracy(new_ligits, test_new_target, topk=(1,5)) # new_target: [batch, topK+1]
         top1 += acc1
@@ -720,7 +720,7 @@ def main():
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
                 with torch.no_grad():
                     topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
-                    new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights, alpha=alpha, beta=beta)
+                    new_ligits = transformer(test_features,test_new_target,topK_plusone_protos, topK_plusone_zeroshot_weights, alpha=alpha, beta=beta)
                 acc1, acc5 = accuracy(new_ligits, test_new_target, topk=(1, 5))
                 n = test_features.size(0)
                 top1 = (acc1 / n) * 100

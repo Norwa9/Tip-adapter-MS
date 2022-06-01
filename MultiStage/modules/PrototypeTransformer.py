@@ -31,30 +31,34 @@ class ProtoTransformer(nn.Module):
                                   attn_mask=self.attn_mask)
 
     # x : [batch, 1024]
+    # new_target : [batch], 取值0~topK
     # prototypes : [batch, topK+1, 1024]
     # zeroshot_weights : [batch, topK+1, 1024]
-    def forward(self, x, prototypes, zeroshot_weights, alpha=None,beta=None):
+    def forward(self, x, new_target, prototypes, zeroshot_weights, alpha=None,beta=None):
         if alpha: # search 阶段
             self.alpha = alpha
             self.beta = beta
-
         '''
-        1.输入prototypes经过transformer自注意力得到新的prototypes
+        1.输入prototypes经过自注意力交互, 取第一个输出当做GT的偏移量
         '''
         prototypes = prototypes.permute(1,0,2) # [batch, topK+1, 1024] -> [topK+1, batch, 1024]
-        out_prototypes = self.SALayers(prototypes).permute(1,0,2) # [batch, topK+1, 1024]
-        out_prototypes = F.normalize(out_prototypes, dim=-1)
+        batch_offset = self.SALayers(prototypes)[0] # [batch, 1024] , 表示每个样本的GT prototype应该加上的偏移量
+        batch_offset = F.normalize(batch_offset, dim=-1)
 
         '''
         2.计算logits
-        在transformer得到topK+1个映射后的新protots后,输入x与它们计算相似度输出预测概率分布
+        将GT 对应的prototype加上offset,得到新protots后,输入x与它们计算相似度输出预测概率分布
         类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成
         '''
+        prototypes = prototypes.permute(1,0,2)
+        for i, offset in enumerate(batch_offset):
+            prototypes[i,new_target[i]] += offset
         x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
-        sim =  (out_prototypes @ x ).squeeze(2) # [batch, topK+1, 1024] @ [batch, 1024, 1] = [batch, topK+1, 1]
+        sim =  (prototypes @ x ).squeeze(2) # [batch, topK+1, 1024] @ [batch, 1024, 1] = [batch, topK+1, 1]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, topK+1]
         zero_shot_logits = (zeroshot_weights @ x ).squeeze(2)   #  [batch,topK+1,1024] @ [batch,1024,1]  =  [batch,topK+1,1]
         logits = new_knowledges + zero_shot_logits # [batch,topK+1]
+        # TODO 去掉 zero_shot_logits
         
         return logits
     
