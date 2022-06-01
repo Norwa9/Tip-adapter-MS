@@ -243,20 +243,22 @@ class Tip_Adapter(nn.Module):
 
         
     # x : [batch, 1024]
-    def forward(self, x, labels, alpha=None,beta=None):
+    # proto_mask : [batch, cls_num] 其中有topK+1个位置上为1其余位置为0
+    def forward(self, x, labels, proto_mask=None, alpha=None,beta=None):
         if alpha: # search 阶段
             self.alpha = alpha
             self.beta = beta
         
-        # sim = self.sim(x, self.proto) # 归一化后点乘，效果不好！
+        
         sim =  x @ self.proto.T # [batch, 1024] x [1024, cls_num] = [batch, cls_num]
-
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta
         zero_shot_logits = 100. * x @ self.zero_shots_weight 
 
         logits = new_knowledges + zero_shot_logits
+        if proto_mask != None:
+            logits = logits * proto_mask
         
-        loss_proto = self.cal_ins_pro_loss(x,labels)
+        loss_proto = self.cal_ins_pro_loss(x,labels, proto_mask)
 
         return logits, loss_proto
 
@@ -274,9 +276,10 @@ class Tip_Adapter(nn.Module):
         # instance-prototype loss
         t = self.args.temperature # contrastive loss temperature
 
-        # sim_mat = self.sim(x, self.proto) # 先归一化x和proto，再点乘计算相似度
-        sim_mat =  x @ self.proto.T # 不归一化，直接点乘计算相似度
-        sim_mat = torch.exp(sim_mat / t) # [batch, num_class],每一行是每个样本与所有类中心的距离
+        sim_mat = x @ self.proto.T  # [batch, cls_num]
+        if proto_mask != None:
+            sim_mat = sim_mat * proto_mask # [batch, cls_num] * [batch, cls_num] = [batch, cls_num]
+        sim_mat = torch.exp(sim_mat / t) # [batch, cls_num], 每一行是每个样本与所有类中心的距离
         
         # labels : [batch]
         batch = sim_mat.shape[0]
@@ -307,27 +310,21 @@ def main():
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
     state_dict_save_path = f"/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/{py_filename}.pt"
-    state_dict_save_path_transforer = f"/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/transforer.pt"
+    state_dict_save_path_stage2 = f"/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/stage2.pt"
 
     zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
-
-    test_zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_zeroshot_weights.pt"
-    test_prototypes_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_prototypes.pt"
-    test_new_target_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_new_target.pt"
 
     load_train = False
     load_test = False
     load_text_features = False
     load_adapter = False
     search = False
-    load_testing_prototypes = False
 
     load_train = True
     load_test = True
     load_text_features = True
     load_adapter = True
     search = True 
-    load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
     # lr 
@@ -344,8 +341,8 @@ def main():
     
     # refine 
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_epoch', type=int, default=20)
-    parser.add_argument('--refine_lr', type=float, default=0.01)
+    parser.add_argument('--refine_epoch', type=int, default=10)
+    parser.add_argument('--refine_lr', type=float, default=0.001)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
 
@@ -522,7 +519,6 @@ def main():
                     image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
                     image_features = image_features
 
-
                 logits, loss_proto = adapter(image_features, target)
                 loss_cls = F.cross_entropy(logits, target)
                 loss = loss_proto + loss_cls
@@ -583,60 +579,16 @@ def main():
                 best_epoch = train_idx + 1
             
         logger.info(f"Stage1: Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
-    
-    # ------------------------------------------ Load testing prototypes ------------------------------------------
-    '''
-    训练完adapter后, 预先存储测试集的topK+1个prototypes和zeroshot weights
-    '''
-    adapter.load_state_dict(torch.load(state_dict_save_path))
-    test_prototypes = [] # [len(test), topK+1, 1024], 测试集的topK+1个prototypes
-    test_zs_weights = [] # [len(test), topK+1, 1024], 测试集的topK+zeroshot weights 
-    test_new_target = [] # [len(test), topK+1] 
-    if not load_testing_prototypes:
-        logger.info('Saving testing prototypes and testing zeroshot weights...')
-        with torch.no_grad():
-            for i, (images, target) in enumerate(tqdm(loader)):
-                images = images.cuda()
-                target = target.cuda()
-                image_features = model.encode_image(images)
-                image_features /= image_features.norm(dim=-1, keepdim=True)
-                logits, _ = adapter(image_features, target)
-                new_target, topK_plusone_indices = find_topk_plus_one(logits,target,args.topK) 
-                topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
-                
-                test_prototypes.append(topK_plusone_protos)
-                test_zs_weights.append(topK_plusone_zeroshot_weights)
-                test_new_target.append(new_target)
-        
-        test_prototypes = torch.cat(test_prototypes)
-        test_zs_weights = torch.cat(test_zs_weights)
-        test_new_target = torch.cat(test_new_target)
-
-        torch.save(test_prototypes, test_zeroshot_weights_save_path)
-        torch.save(test_zs_weights, test_prototypes_save_path) 
-        torch.save(test_new_target, test_new_target_save_path)
-    else:
-        logger.info('Loading testing prototypes and testing zeroshot weights...')
-        test_prototypes = torch.load(test_zeroshot_weights_save_path)
-        test_zs_weights = torch.load(test_prototypes_save_path)
-        test_new_target = torch.load(test_new_target_save_path)
-        
 
     # ------------------------------------------ Stage2 refine------------------------------------------
-    # 冻结adapter
-    for name,param in adapter.named_parameters(): 
-        param.requires_grad_(False)
-    adapter.eval()
-
-    # prototypes映射网络
-    transformer = ProtoTransformer(args).cuda()
-    optimizer_trans = torch.optim.AdamW(transformer.parameters(), lr=args.refine_lr, eps=1e-4)
-    scheduler_trans = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_trans, args.refine_epoch * len(train_loader_shuffle))
+    adapter.load_state_dict(torch.load(state_dict_save_path))
+    optimizer_stage2 = torch.optim.AdamW(adapter.parameters(), lr=args.refine_lr, eps=1e-4)
+    scheduler_stage2 = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_stage2, args.refine_epoch * len(train_loader_shuffle))
     best_top1 = -1
     best_top5 = -1
     best_epoch = -1
     for train_idx in range(args.refine_epoch):
-        transformer.train()
+        adapter.train()
         correct_all = 0
         n = 0
         loss_list = []
@@ -651,40 +603,34 @@ def main():
             with torch.no_grad():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
-
-            logits, _ = adapter(image_features, target)
-            # 提取包含目标prototype的topK+1个prototypes的下标
-            # new_target 用于transformer的分类任务
-            # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
-            new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
-            new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
-            
-            loss = F.cross_entropy(new_logits, new_target)
+                logits, _ = adapter(image_features, target)
+            # 提取包含目标prototype的topK+1个prototypes,并转换为指示mask
+            _, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            _, prototypes_mask = topK_indices_to_mask(topK_plusone_indices) # [batch, cls_num]
+            new_logits, loss = adapter(image_features, target, prototypes_mask)
+            loss = F.cross_entropy(new_logits, target)
             loss_value = loss.item()
-            correct = accuracy(new_logits, new_target)
+            correct = accuracy(new_logits, target)
             correct_all += correct[0]
             n += len(new_logits)
             loss_list.append(loss_value)
 
-            optimizer_trans.zero_grad()
+            optimizer_stage2.zero_grad()
             loss.backward()
-            optimizer_trans.step()
-            scheduler_trans.step()
+            optimizer_stage2.step()
+            scheduler_stage2.step()
 
-        current_lr = scheduler_trans.get_last_lr()[0]
+        current_lr = scheduler_stage2.get_last_lr()[0]
         text = f'LR: {current_lr:.6f}, Acc: {(correct_all / n):.4f} ({correct_all}/{n}), Loss: {(sum(loss_list)/len(loss_list)):.4f}'
         logger.info(text)
 
 
         # eval
-        transformer.eval()
+        adapter.eval()
         top1, top5, n = 0., 0., 0.
         with torch.no_grad():
-            topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
-            new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
-
-        acc1,acc5 = accuracy(new_ligits, test_new_target, topk=(1,5)) # new_target: [batch, topK+1]
+            logits, _ = adapter(test_features, test_labels)
+        acc1,acc5 = accuracy(logits, test_labels, topk=(1,5)) # new_target: [batch, topK+1]
         top1 += acc1
         top5 += acc5
         n += test_features.size(0)
@@ -694,7 +640,7 @@ def main():
         logger.info(f"Refine Top-5 Accuracy: {top5:.2f}")
         if top1 > best_top1:
             logger.info(f'Stage2: Saving best model..')
-            torch.save(transformer.state_dict(), state_dict_save_path_transforer)
+            torch.save(adapter.state_dict(), state_dict_save_path_stage2)
 
             best_top1 = top1
             best_top5 = top5
@@ -711,20 +657,17 @@ def main():
     '''
     if search:
         logger.info("Begin to search")
-
-        transformer.load_state_dict(torch.load(state_dict_save_path_transforer))
-
+        adapter.load_state_dict(torch.load(state_dict_save_path_stage2))
         alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6] 
         beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
         best_top1 = 0
-        transformer.eval()
+        adapter.eval()
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
                 with torch.no_grad():
-                    topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
-                    new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights, alpha=alpha, beta=beta)
-                acc1, acc5 = accuracy(new_ligits, test_new_target, topk=(1, 5))
+                    logits, _ = adapter(test_features, test_labels,proto_mask=None, alpha=alpha,beta=beta)
+                acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
                 n = test_features.size(0)
                 top1 = (acc1 / n) * 100
                 top5 = (acc5 / n) * 100

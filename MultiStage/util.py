@@ -151,13 +151,15 @@ def topK_indices_to_mask(batch_topk_indices:torch.tensor, class_num = 1000, shot
 
     for index, indices in enumerate(batch_topk_indices):
         for i in indices:
-            masks_class[index][i] = 1
+            masks_class[index][i.astype('int64')] = 1
     
     
     masks_sample = masks_class.unsqueeze(2)
     masks_sample = masks_sample.repeat(1,1,shot)
     masks_sample = masks_sample.view(batch_size, -1)
 
+    masks_sample = masks_sample.cuda()
+    masks_class = masks_class.cuda()
 
     return masks_sample, masks_class
 
@@ -242,7 +244,7 @@ def get_topK_plusone_protos(proto_indices, orgin_protos:torch.Tensor, orgin_zero
     # print(one_hot_proto_indices)
     # topK_plusone_protos 
     one_hot_proto_indices = one_hot_proto_indices.cuda()
-    topK_plusone_protos = one_hot_proto_indices @ orgin_protos # [batch,topK+1, 1000] @ [batch, 1000, 1024] -> [batch,topK+1, 1024]
+    topK_plusone_protos = one_hot_proto_indices @ orgin_protos # [batch,topK+1, 1000] @ [1000, 1024] -> [batch,topK+1, 1024]
     topK_plusone_zeroshot_weights = one_hot_proto_indices @ orgin_zeroshot_weights
 
 
