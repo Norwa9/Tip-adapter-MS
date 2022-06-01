@@ -666,7 +666,7 @@ def main():
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
                 with torch.no_grad():
-                    logits, _ = adapter(test_features, test_labels,proto_mask=None, alpha=alpha,beta=beta)
+                    logits, _ = adapter(test_features, test_labels, proto_mask=None, alpha=alpha,beta=beta)
                 acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
                 n = test_features.size(0)
                 top1 = (acc1 / n) * 100
