@@ -336,7 +336,7 @@ def main():
     # refine 
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=20)
-    parser.add_argument('--refine_lr', type=float, default=0.001)
+    parser.add_argument('--refine_lr', type=float, default=0.01)
 
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
@@ -380,7 +380,7 @@ def main():
     logger.info(f"{len(imagenet_classes)} classes, {len(imagenet_templates)} templates")
 
     images = torchvision.datasets.ImageNet(data_path, split='val', transform=preprocess)
-    loader = torch.utils.data.DataLoader(images, batch_size=64, num_workers=8, shuffle=False) # 50000张图片作为测试集
+    loader = torch.utils.data.DataLoader(images, batch_size=1024, num_workers=8, shuffle=False) # 50000张图片作为测试集
 
     train_tranform = transforms.Compose([
         transforms.RandomResizedCrop(size=224, scale=(0.5, 1), interpolation=transforms.InterpolationMode.BICUBIC),
@@ -580,12 +580,14 @@ def main():
     adapter.load_state_dict(torch.load(state_dict_save_path))
     for name,param in adapter.named_parameters(): 
         param.requires_grad_(False)
+    adapter.eval()
 
     # prototypes映射网络
     transformer = ProtoTransformer(args).cuda()
     optimizer_trans = torch.optim.AdamW(transformer.parameters(), lr=args.refine_lr, eps=1e-4)
     scheduler_trans = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_trans, args.refine_epoch * len(train_loader_shuffle))
     best_top1 = -1
+    best_top5 = -1
     best_epoch = -1
     for train_idx in range(args.refine_epoch):
         transformer.train()
@@ -640,19 +642,19 @@ def main():
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
                 test_features_new = image_features
                 test_labels = target
-
-            logits, _ = adapter(test_features_new, test_labels)
-            new_target, topK_plusone_indices = find_topk_plus_one(logits,test_labels,args.topK) 
-            topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
-            new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
+                logits, _ = adapter(test_features_new, test_labels)
+                new_target, topK_plusone_indices = find_topk_plus_one(logits,test_labels,args.topK) 
+                topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
+                new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
 
             acc1,acc5 = accuracy(new_ligits, new_target, topk=(1,5)) # new_target: [batch, topK+1]
             top1 += acc1
             top5 += acc5
-            n += test_features.size(0)
-            top1 = (top1 / n) * 100
-            top5 = (top5 / n) * 100
-
+            n += test_features_new.size(0)
+        top1 = (top1 / n) * 100
+        top5 = (top5 / n) * 100
+        logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")
+        logger.info(f"Refine Top-5 Accuracy: {top5:.2f}")
         if top1 > best_top1:
             logger.info(f'Stage2: Saving best model..')
             torch.save(transformer.state_dict(), state_dict_save_path_transforer)
