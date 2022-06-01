@@ -43,7 +43,6 @@ class ProtoTransformer(nn.Module):
         '''
         prototypes = prototypes.permute(1,0,2) # [batch, topK+1, 1024] -> [topK+1, batch, 1024]
         batch_offset = self.SALayers(prototypes)[0] # [batch, 1024] , 表示每个样本的GT prototype应该加上的偏移量
-        batch_offset = F.normalize(batch_offset, dim=-1)
 
         '''
         2.计算logits

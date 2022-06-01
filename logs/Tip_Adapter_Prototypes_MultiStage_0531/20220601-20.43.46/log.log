@@ -1,0 +1,29 @@
+2022-06-01 12:43:46:INFO:Namespace(alpha=1, attn_dropout=0.1, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=4, refine_epoch=20, refine_lr=0.01, relu_dropout=0.1, res_dropout=0.1, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-01 12:43:55:INFO:1000 classes, 7 templates
+2022-06-01 12:44:10:INFO:Load data finished.
+2022-06-01 12:44:10:INFO:Loading saved text features.
+2022-06-01 12:44:10:INFO:Loading training image features
+2022-06-01 12:44:11:INFO:start saving testing image features
+2022-06-01 12:44:11:INFO:Loading fintuned adapter parameters..
+2022-06-01 12:44:11:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-01 12:44:13:INFO:Refine time: 1 / 20
+2022-06-01 12:44:45:INFO:LR: 0.009938, Acc: 0.5720 (9152.0/16000), Loss: 1.7578
+2022-06-01 12:44:46:INFO:Refine Top-1 Accuracy: 62.97
+2022-06-01 12:44:46:INFO:Refine Top-5 Accuracy: 88.93
+2022-06-01 12:44:46:INFO:Stage2: Saving best model..
+2022-06-01 12:44:46:INFO:Refine time: 2 / 20
+2022-06-01 12:45:19:INFO:LR: 0.009755, Acc: 0.7011 (11217.0/16000), Loss: 1.7520
+2022-06-01 12:45:19:INFO:Refine Top-1 Accuracy: 63.94
+2022-06-01 12:45:19:INFO:Refine Top-5 Accuracy: 89.04
+2022-06-01 12:45:19:INFO:Stage2: Saving best model..
+2022-06-01 12:45:19:INFO:Refine time: 3 / 20
+2022-06-01 12:45:47:INFO:LR: 0.009455, Acc: 0.7206 (11530.0/16000), Loss: 1.7511
+2022-06-01 12:45:48:INFO:Refine Top-1 Accuracy: 64.00
+2022-06-01 12:45:48:INFO:Refine Top-5 Accuracy: 89.05
+2022-06-01 12:45:48:INFO:Stage2: Saving best model..
+2022-06-01 12:45:48:INFO:Refine time: 4 / 20
+2022-06-01 12:46:25:INFO:LR: 0.009045, Acc: 0.7332 (11731.0/16000), Loss: 1.7498
+2022-06-01 12:46:26:INFO:Refine Top-1 Accuracy: 64.10
+2022-06-01 12:46:26:INFO:Refine Top-5 Accuracy: 89.06
+2022-06-01 12:46:26:INFO:Stage2: Saving best model..
+2022-06-01 12:46:26:INFO:Refine time: 5 / 20
