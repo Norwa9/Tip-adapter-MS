@@ -323,7 +323,7 @@ def main():
     load_test = True
     load_text_features = True
     load_adapter = True
-    # search = True 
+    search = True 
     load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
@@ -343,6 +343,8 @@ def main():
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=20)
     parser.add_argument('--refine_lr', type=float, default=0.02)
+    parser.add_argument('--transformer_alpha', type=float, default=1.0)
+    parser.add_argument('--transformer_beta', type=float, default=1.17)
 
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
@@ -356,8 +358,8 @@ def main():
     parser.add_argument('--relu_dropout', type=float, default=0.1)
     parser.add_argument('--res_dropout', type=float, default=0.1)
     parser.add_argument('--embed_dropout', type=float, default=0.25)
-    parser.add_argument('--attn_mask', action='store_false',
-                    help='use attention mask for Transformer (default: true)')
+    parser.add_argument('--attn_mask', action='store_true',
+                    help='use attention mask for Transformer (default: false)')
 
     
     args = parser.parse_args()
@@ -706,30 +708,23 @@ def main():
     '''
     if search:
         logger.info("Begin to search")
-        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6]
+
+        transformer.load_state_dict(torch.load(state_dict_save_path_transforer))
+
+        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6] 
         beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
         best_top1 = 0
-        adapter.eval()
+        transformer.eval()
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
-                top1, top5, n = 0., 0., 0.
-                batch_idx = 0
-                # predict
                 with torch.no_grad():
-                    test_features = torch.load(test_features_path)
-                    test_labels = torch.load(test_targets_path)
-                    test_features_new = test_features
-
-                logits, _ = adapter(test_features_new, test_labels,alpha,beta)
-                # measure accuracy
-                acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
-                batch_idx += 1
-                top1 += acc1
-                top5 += acc5
-                n += test_features_new.size(0)
-                top1 = (top1 / n) * 100
-                top5 = (top5 / n) * 100
+                    topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
+                    new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights, alpha=alpha, beta=beta)
+                acc1, acc5 = accuracy(new_ligits, test_new_target, topk=(1, 5))
+                n = test_features.size(0)
+                top1 = (acc1 / n) * 100
+                top5 = (acc5 / n) * 100
 
                 if top1 > best_top1:
                     text = f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}'

@@ -10,8 +10,8 @@ class ProtoTransformer(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.alpha = args.alpha
-        self.beta = args.beta
+        self.alpha = args.transformer_alpha
+        self.beta = args.transformer_beta
         self.embed_dim  = args.embed_dim
         self.num_heads = args.num_heads
         self.layers = args.layers
