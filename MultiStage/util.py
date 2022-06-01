@@ -204,15 +204,13 @@ def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
         origin_target_i = topK_i.cpu().numpy() # [topK]
         target_i = target[index]
         if target_i in topK_i:
-            new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item()
-            # 添加负prototype
-            while(1):
-                neg_index = np.random.randint(0,cls_num)
-                if neg_index not in topK_i:
-                    origin_target_i = np.append(origin_target_i, neg_index) # [topK] -> [topK+1]
-                    break
+            new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item() # 0~topK
+            # 添加负prototype,选择第topK+1相似的prototype的下标
+            topKp1 = logits[index].topk(topK+1)[1][-1]
+            neg_index = topKp1.cpu().numpy()
+            origin_target_i = np.append(origin_target_i, neg_index)
         else:
-            new_target_i = topK
+            new_target_i = topK # 0~topK
             origin_target_i = np.append(origin_target_i, target_i.cpu().numpy()) # [topK] -> [topK+1]
         
         new_target.append(new_target_i)
