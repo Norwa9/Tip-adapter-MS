@@ -1,0 +1,9 @@
+2022-06-01 03:17:41:INFO:Namespace(alpha=1, attn_dropout=0.1, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=4, refine_epoch=20, refine_lr=0.001, relu_dropout=0.1, res_dropout=0.1, temperature=0.05, train_epoch=20)
+2022-06-01 03:17:52:INFO:1000 classes, 7 templates
+2022-06-01 03:18:10:INFO:Load data finished.
+2022-06-01 03:18:11:INFO:Find saved text features.
+2022-06-01 03:18:11:INFO:finish getting text features. start getting image features
+2022-06-01 03:18:11:INFO:start saving training image features
+2022-06-01 03:18:11:INFO:start saving testing image features
+2022-06-01 03:18:12:INFO:Loading fintuned adapter parameters..
+2022-06-01 03:18:12:INFO:Refine time: 1 / 20

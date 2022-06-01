@@ -191,7 +191,6 @@ def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
     batch = logits.shape[0]
 
     batch_topk_indices = logits.topk(topK)[1] # [batch , topK]
-    print(f'batch_topk_indices:\n{batch_topk_indices}')
     
     # 1. new target
     new_target = [] # [batch]  , 取值0~topK
@@ -200,7 +199,7 @@ def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
     # 如果其topk中有GT，则将其新标签定义为topK中GT的下标，然后再添加一个负prototype
     # 如果其topK没有GT，则将其新标签定义为topK+1，然后添加GT
     for index, topK_i in enumerate(batch_topk_indices):
-        origin_target_i = topK_i.numpy() # [topK]
+        origin_target_i = topK_i.cpu().numpy() # [topK]
         target_i = target[index]
         if target_i in topK_i:
             new_target_i = ((topK_i == target_i).nonzero(as_tuple=True)[0]).item()
@@ -212,33 +211,44 @@ def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
                     break
         else:
             new_target_i = topK
-            origin_target_i = np.append(origin_target_i, target_i) # [topK] -> [topK+1]
+            origin_target_i = np.append(origin_target_i, target_i.cpu().numpy()) # [topK] -> [topK+1]
         
         new_target.append(new_target_i)
         origin_target = np.append(origin_target, origin_target_i)
-        origin_target = origin_target.reshape(batch,-1) 
     
+    origin_target = origin_target.reshape(batch,-1)
+    new_target = torch.tensor(new_target).cuda()
+
     return new_target, origin_target
     
 '''
-输入:prototypes [cls_num, 1024]
-输出:根据proto_indices选取的prototypes:
+输入:
     proto_indices:[batch,topK+1]
-    topK_plusone_protos:[batch,topK+1,1024]
+    orgin_protos [cls_num, 1024]
+    orgin_zeroshot_weights [1024, cls_num]
+输出:
+    根据proto_indices选取的prototypes: topK_plusone_protos:[batch,topK+1,1024]
 '''
-def get_topK_plusone_protos(protos:torch.Tensor,proto_indices):
-    cls_num = protos.shape[0]
+def get_topK_plusone_protos(proto_indices, orgin_protos:torch.Tensor, orgin_zeroshot_weights:torch.Tensor,):
+    cls_num = orgin_protos.shape[0]
+    orgin_zeroshot_weights = orgin_zeroshot_weights.T
     # proto_indices 转one-hot:
     # proto_indices: [batch,topK+1]
     # one_hot_proto_indices: [batch,topK+1, 1000]
     one_hot_proto_indices = torch.zeros(proto_indices.shape[0],proto_indices.shape[1], cls_num)
     for i,indices in enumerate(proto_indices):
         for j,index in enumerate(indices):
-            one_hot_proto_indices[i][j][index] = 1
+            one_hot_proto_indices[i][j][index.astype('int64')] = 1
     # print(one_hot_proto_indices)
     # topK_plusone_protos 
-    topK_plusone_protos = one_hot_proto_indices @ protos # [batch,topK+1, 1000] @ [batch,1000, 1024] -> [batch,topK+1, 1024]
-    return topK_plusone_protos
+    one_hot_proto_indices = one_hot_proto_indices.cuda()
+    topK_plusone_protos = one_hot_proto_indices @ orgin_protos # [batch,topK+1, 1000] @ [batch, 1000, 1024] -> [batch,topK+1, 1024]
+    topK_plusone_zeroshot_weights = one_hot_proto_indices @ orgin_zeroshot_weights
+
+
+
+
+    return topK_plusone_protos, topK_plusone_zeroshot_weights
 
 # ----------------------------------------other---------------------------------------------
 

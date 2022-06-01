@@ -1,0 +1,27 @@
+2022-06-01 02:52:59:INFO:Namespace(alpha=1, attn_dropout=0.1, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.0015, num_heads=4, refine_epoch=20, refine_lr=0.001, relu_dropout=0.1, res_dropout=0.1, temperature=0.05, train_epoch=20)
+2022-06-01 02:53:07:INFO:1000 classes, 7 templates
+2022-06-01 02:53:33:INFO:Load data finished.
+2022-06-01 02:53:33:INFO:Find saved text features.
+2022-06-01 02:53:33:INFO:finish getting text features. start getting image features
+2022-06-01 02:53:33:INFO:start saving training image features
+2022-06-01 02:53:33:INFO:Augment time: 0 / 10
+2022-06-01 02:55:28:INFO:Augment time: 1 / 10
+2022-06-01 02:55:50:INFO:Augment time: 2 / 10
+2022-06-01 02:56:13:INFO:Augment time: 3 / 10
+2022-06-01 02:56:37:INFO:Augment time: 4 / 10
+2022-06-01 02:57:00:INFO:Augment time: 5 / 10
+2022-06-01 02:57:24:INFO:Augment time: 6 / 10
+2022-06-01 02:57:46:INFO:Augment time: 7 / 10
+2022-06-01 02:58:08:INFO:Augment time: 8 / 10
+2022-06-01 02:58:29:INFO:Augment time: 9 / 10
+2022-06-01 02:58:50:INFO:start saving testing image features
+2022-06-01 02:58:52:INFO:Start fintuning adapter parameters..
+2022-06-01 02:58:52:INFO:Train time: 1 / 20
+2022-06-01 02:59:14:INFO:LR: 0.001491, Acc: 0.5934 (9494.0/16000), Loss: 4.4491
+2022-06-01 02:59:14:INFO:Testing Top-1 Accuracy: 60.71
+2022-06-01 02:59:14:INFO:Testing Top-2 Accuracy: 74.73
+2022-06-01 02:59:14:INFO:Testing Top-3 Accuracy: 81.13
+2022-06-01 02:59:14:INFO:Testing Top-4 Accuracy: 84.77
+2022-06-01 02:59:14:INFO:Testing Top-5 Accuracy: 87.15
+2022-06-01 02:59:14:INFO:Stage1: Saving best model..
+2022-06-01 02:59:14:INFO:Train time: 2 / 20

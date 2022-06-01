@@ -13,7 +13,7 @@ from tqdm import tqdm
 import argparse
 from util import *
 import sys
-from modules import ProtoTransformer
+from modules.PrototypeTransformer import *
 
 
 print("Torch version:", torch.__version__)
@@ -220,9 +220,6 @@ def zeroshot_classifier(classnames, templates, model):
     return zeroshot_weights
 
 
-'''
-image_feature -> clip_adapter -> image_feature -> tip_adapter(linear1) -> probability distributions
-'''
 class Tip_Adapter(nn.Module):
     # 用训练集初始化tip_adapter(linear1)
     def __init__(self, args, train_features_path, zero_shots_weight):
@@ -230,7 +227,7 @@ class Tip_Adapter(nn.Module):
         self.args = args
         self.alpha = args.alpha
         self.beta=  args.beta
-        self.zero_shots_weight = zero_shots_weight
+        self.zero_shots_weight = zero_shots_weight # [1024, cls_num]
         self.k_shot = args.k_shot
         self.cls_num = zero_shots_weight.shape[1]
         
@@ -245,8 +242,6 @@ class Tip_Adapter(nn.Module):
         self.proto = nn.Parameter(prototypes_features,requires_grad=True)
 
         
-
-
     # x : [batch, 1024]
     def forward(self, x, labels, alpha=None,beta=None):
         if alpha: # search 阶段
@@ -264,7 +259,7 @@ class Tip_Adapter(nn.Module):
         loss_proto = self.cal_ins_pro_loss(x,labels)
 
         return logits, loss_proto
-    
+
     def sim(self, x, y):
         norm_x = F.normalize(x, dim=-1)
         norm_y = F.normalize(y, dim=-1)
@@ -295,7 +290,6 @@ class Tip_Adapter(nn.Module):
 
         return loss
 
-
 def main():
     py_filename = os.path.basename(sys.argv[0]).split(".")[0]
     logger = get_logger(log_dir=py_filename)
@@ -320,26 +314,30 @@ def main():
     load_adapter = False
     search = False
 
-    # load_train = True
+    load_train = True
     load_test = True
     load_text_features = True
-    # load_adapter = True
+    load_adapter = True
     search = True
     
     parser = argparse.ArgumentParser()
     # lr 
-    parser.add_argument('--lr', type=float, default=0.001, help='lr')
+    parser.add_argument('--lr', type=float, default=0.015, help='lr')
     
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
-    parser.add_argument('--temperature', type=float, default=0.9)
+    parser.add_argument('--temperature', type=float, default=0.05)
     
     # epoch
-    parser.add_argument('--train_epoch', type=int, default=30)
-    parser.add_argument('--stage2_epoch', type=int, default=20)
-    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--train_epoch', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=512)
     
+    # refine 
+    parser.add_argument('--topK', type=int, default=5)
+    parser.add_argument('--refine_epoch', type=int, default=20)
+    parser.add_argument('--refine_lr', type=float, default=0.001)
+
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
     parser.add_argument('--k_shot', type=int, default=16)
@@ -565,7 +563,7 @@ def main():
             logger.info(f"Testing Top-5 Accuracy: {top5:.2f}")
 
             if top1 > best_top1:
-                logger.info(f'Saving best model..')
+                logger.info(f'Stage1: Saving best model..')
                 torch.save(adapter.state_dict(), state_dict_save_path)
 
                 best_top1 = top1
@@ -575,7 +573,7 @@ def main():
                 best_top5 = top5
                 best_epoch = train_idx + 1
             
-        logger.info(f"Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
+        logger.info(f"Stage1: Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
     # ------------------------------------------ Stage2 refine------------------------------------------
     # 冻结adapter
@@ -584,14 +582,17 @@ def main():
         param.requires_grad_(False)
 
     # prototypes映射网络
-    transformer = ProtoTransformer(args)
-
-    for train_idx in range(args.stage2_epoch):
+    transformer = ProtoTransformer(args).cuda()
+    optimizer_trans = torch.optim.AdamW(transformer.parameters(), lr=args.refine_lr, eps=1e-4)
+    scheduler_trans = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_trans, args.refine_epoch * len(train_loader_shuffle))
+    best_top1 = -1
+    best_epoch = -1
+    for train_idx in range(args.refine_epoch):
         transformer.train()
         correct_all = 0
         n = 0
         loss_list = []
-        logger.info(f'Refine time: {train_idx+1} / {args.stage2_epoch}')
+        logger.info(f'Refine time: {train_idx+1} / {args.refine_epoch}')
         
         alpha = args.alpha
         beta = args.beta
@@ -602,81 +603,73 @@ def main():
             with torch.no_grad():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
-                image_features = image_features
-
 
             logits, _ = adapter(image_features, target)
             # 提取包含目标prototype的topK+1个prototypes的下标
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
-            new_target, origin_target = find_topk_plus_one(logits,target,args.topK) 
-            topK_plusone_protos =  # [batch, topK+1, 1024]
+            new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
+            new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             
-            loss_cls = F.cross_entropy(logits, target)
-            loss = loss_proto + loss_cls
+            loss = F.cross_entropy(new_logits, new_target)
             loss_value = loss.item()
-            correct = accuracy(logits, target)
+            correct = accuracy(new_logits, new_target)
             correct_all += correct[0]
-            n += len(logits)
+            n += len(new_logits)
             loss_list.append(loss_value)
 
-            optimizer.zero_grad()
+            optimizer_trans.zero_grad()
             loss.backward()
-            optimizer.step()
-            scheduler.step()
+            optimizer_trans.step()
+            scheduler_trans.step()
 
-        current_lr = scheduler.get_last_lr()[0]
+        current_lr = scheduler_trans.get_last_lr()[0]
         text = f'LR: {current_lr:.6f}, Acc: {(correct_all / n):.4f} ({correct_all}/{n}), Loss: {(sum(loss_list)/len(loss_list)):.4f}'
         logger.info(text)
 
 
         # eval
-        adapter.eval()
-
+        transformer.eval()
         top1, top5, n = 0., 0., 0.
-        top2,top3,top4 = 0., 0., 0.
-        with torch.no_grad():
-            test_features = torch.load(test_features_path)
-            test_labels = torch.load(test_targets_path)
-            test_features_new = test_features
+        for i, (images, target) in enumerate(tqdm(loader)): # 测试集
+            images = images.cuda()
+            target = target.cuda()
+            with torch.no_grad():
+                image_features = model.encode_image(images)
+                image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
+                test_features_new = image_features
+                test_labels = target
 
-        logits, _ = adapter(test_features_new, test_labels)
-        acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
-        top1 += acc1
-        top2 += acc2
-        top3 += acc3
-        top4 += acc4
-        top5 += acc5
-        n += test_features.size(0)
-        top1 = (top1 / n) * 100
-        top2 = (top2 / n) * 100
-        top3 = (top3 / n) * 100
-        top4 = (top4 / n) * 100
-        top5 = (top5 / n) * 100
-        logger.info(f"Refine Testing Top-1 Accuracy: {top1:.2f}")
-        logger.info(f"Refine Testing Top-2 Accuracy: {top2:.2f}")
-        logger.info(f"Refine Testing Top-3 Accuracy: {top3:.2f}")
-        logger.info(f"Refine Testing Top-4 Accuracy: {top4:.2f}")
-        logger.info(f"Refine Testing Top-5 Accuracy: {top5:.2f}")
+            logits, _ = adapter(test_features_new, test_labels)
+            new_target, topK_plusone_indices = find_topk_plus_one(logits,test_labels,args.topK) 
+            topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
+            new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
+
+            acc1,acc5 = accuracy(new_ligits, new_target, topk=(1,5)) # new_target: [batch, topK+1]
+            top1 += acc1
+            top5 += acc5
+            n += test_features.size(0)
+            top1 = (top1 / n) * 100
+            top5 = (top5 / n) * 100
 
         if top1 > best_top1:
-            logger.info(f'Saving best model..')
-            torch.save(adapter.state_dict(), state_dict_save_path_transforer)
+            logger.info(f'Stage2: Saving best model..')
+            torch.save(transformer.state_dict(), state_dict_save_path_transforer)
 
             best_top1 = top1
-            best_top2 = top2
-            best_top3 = top3
-            best_top4 = top4
             best_top5 = top5
             best_epoch = train_idx + 1
         
-    logger.info(f"Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
+    logger.info(f"Stage2: Best Testing Top 1,5 Accuracy: {best_top1:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
 
 
 
 
     # ------------------------------------------ Search ------------------------------------------
-    
+    '''
+    TODO Search放在第一阶段之后还是第二阶段之后?
+    '''
     if search:
         logger.info("Begin to search")
         alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6]
@@ -713,7 +706,7 @@ def main():
 
 
 
-# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/Tip_Adapter_Prototypes_0528.py
+# python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/Tip_Adapter_Prototypes_MultiStage_0531.py
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = '2'
     main()

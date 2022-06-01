@@ -5,7 +5,6 @@ from modules.position_embedding import SinusoidalPositionalEmbedding
 from modules.multihead_attention import MultiheadAttention
 import math
 
-
 class TransformerEncoder(nn.Module):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
@@ -21,13 +20,16 @@ class TransformerEncoder(nn.Module):
     """
 
     def __init__(self, embed_dim, num_heads, layers, attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0,
-                 embed_dropout=0.0, attn_mask=False):
+                 embed_dropout=0.0, attn_mask=False, position_embedding=False):
         super().__init__()
         self.dropout = embed_dropout      # Embedding dropout
         self.attn_dropout = attn_dropout
         self.embed_dim = embed_dim
         self.embed_scale = math.sqrt(embed_dim)
-        self.embed_positions = SinusoidalPositionalEmbedding(embed_dim)
+        if position_embedding:
+            self.embed_positions = SinusoidalPositionalEmbedding(embed_dim)
+        else: 
+            self.embed_positions = None
         
         self.attn_mask = attn_mask
 
@@ -182,7 +184,7 @@ def buffered_future_mask(tensor, tensor2=None):
         dim2 = tensor2.size(0)
     future_mask = torch.triu(fill_with_neg_inf(torch.ones(dim1, dim2)), 1+abs(dim2-dim1))
     if tensor.is_cuda:
-        future_mask = future_mask.cuda()
+        future_mask = future_mask.to(tensor.device)
     return future_mask[:dim1, :dim2]
 
 
