@@ -308,17 +308,23 @@ def main():
 
     zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/zeroshot_weights.pt"
 
+    test_zeroshot_weights_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_zeroshot_weights.pt"
+    test_prototypes_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_prototypes.pt"
+    test_new_target_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_new_target.pt"
+
     load_train = False
     load_test = False
     load_text_features = False
     load_adapter = False
     search = False
+    load_testing_prototypes = False
 
     load_train = True
     load_test = True
     load_text_features = True
     load_adapter = True
-    search = True
+    # search = True 
+    load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
     # lr 
@@ -336,7 +342,7 @@ def main():
     # refine 
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=20)
-    parser.add_argument('--refine_lr', type=float, default=0.01)
+    parser.add_argument('--refine_lr', type=float, default=0.02)
 
     # other
     parser.add_argument('--augment_epoch', type=int, default=10)
@@ -574,10 +580,48 @@ def main():
                 best_epoch = train_idx + 1
             
         logger.info(f"Stage1: Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
+        # ------------------------------------------ Finetuing End ------------------------------------------
+    
+    # ------------------------------------------ Load testing prototypes ------------------------------------------
+    '''
+    训练完adapter后, 预先存储测试集的topK+1个prototypes和zeroshot weights
+    '''
+    adapter.load_state_dict(torch.load(state_dict_save_path))
+    test_prototypes = [] # [len(test), topK+1, 1024], 测试集的topK+1个prototypes
+    test_zs_weights = [] # [len(test), topK+1, 1024], 测试集的topK+zeroshot weights 
+    test_new_target = [] # [len(test), topK+1] 
+    if not load_testing_prototypes:
+        logger.info('Saving testing prototypes and testing zeroshot weights...')
+        with torch.no_grad():
+            for i, (images, target) in enumerate(tqdm(loader)):
+                images = images.cuda()
+                target = target.cuda()
+                image_features = model.encode_image(images)
+                image_features /= image_features.norm(dim=-1, keepdim=True)
+                logits, _ = adapter(image_features, target)
+                new_target, topK_plusone_indices = find_topk_plus_one(logits,target,args.topK) 
+                topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
+                
+                test_prototypes.append(topK_plusone_protos)
+                test_zs_weights.append(topK_plusone_zeroshot_weights)
+                test_new_target.append(new_target)
+        
+        test_prototypes = torch.cat(test_prototypes)
+        test_zs_weights = torch.cat(test_zs_weights)
+        test_new_target = torch.cat(test_new_target)
+
+        torch.save(test_prototypes, test_zeroshot_weights_save_path)
+        torch.save(test_zs_weights, test_prototypes_save_path) 
+        torch.save(test_new_target, test_new_target_save_path) 
+    else:
+        logger.info('Loading testing prototypes and testing zeroshot weights...')
+        test_prototypes = torch.load(test_zeroshot_weights_save_path)
+        test_zs_weights = torch.load(test_prototypes_save_path)
+        test_new_target = torch.load(test_new_target_save_path)
+        
 
     # ------------------------------------------ Stage2 refine------------------------------------------
     # 冻结adapter
-    adapter.load_state_dict(torch.load(state_dict_save_path))
     for name,param in adapter.named_parameters(): 
         param.requires_grad_(False)
     adapter.eval()
@@ -634,17 +678,16 @@ def main():
         # eval
         transformer.eval()
         top1, top5, n = 0., 0., 0.
-        for i, (images, target) in enumerate(tqdm(loader)): # 测试集
+        for i, (images, _) in enumerate(tqdm(loader)): # 测试集
+            batch = images.shape[0]
             images = images.cuda()
-            target = target.cuda()
             with torch.no_grad():
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
                 test_features_new = image_features
-                test_labels = target
-                logits, _ = adapter(test_features_new, test_labels)
-                new_target, topK_plusone_indices = find_topk_plus_one(logits,test_labels,args.topK) 
-                topK_plusone_protos, topK_plusone_zeroshot_weights =  get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
+
+                new_target = test_new_target[i * batch:(i+1)*batch]
+                topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes[i * batch:(i+1)*batch,:,:], test_zs_weights[i * batch:(i+1)*batch,:,:]
                 new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
 
             acc1,acc5 = accuracy(new_ligits, new_target, topk=(1,5)) # new_target: [batch, topK+1]
