@@ -415,19 +415,16 @@ def main():
 
     # ------------------------------------------getting text feature------------------------------------------
     if not load_text_features:
-        logger.info('start getting text features.')
+        logger.info('Saving text features.')
         zeroshot_weights = zeroshot_classifier(imagenet_classes, imagenet_templates, model)
         torch.save(zeroshot_weights,zeroshot_weights_save_path)
     else:
-        logger.info('Find saved text features.')
+        logger.info('Loading saved text features.')
         zeroshot_weights = torch.load(zeroshot_weights_save_path)
-    logger.info('finish getting text features. start getting image features')
 
     # ------------------------------------------saving training features------------------------------------------
-    logger.info('start saving training image features')
-
     if not load_train:
-        
+        logger.info('Saving training image features')
         train_images_targets = []
         train_images_features_agg = []
 
@@ -459,6 +456,7 @@ def main():
         torch.save(train_images_targets, train_targets_path)
 
     else:
+        logger.info('Loading training image features')
         train_images_features_agg = torch.load(train_features_path)
         train_images_targets = torch.load(train_targets_path)
 
@@ -580,7 +578,6 @@ def main():
                 best_epoch = train_idx + 1
             
         logger.info(f"Stage1: Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
-        # ------------------------------------------ Finetuing End ------------------------------------------
     
     # ------------------------------------------ Load testing prototypes ------------------------------------------
     '''
@@ -612,7 +609,7 @@ def main():
 
         torch.save(test_prototypes, test_zeroshot_weights_save_path)
         torch.save(test_zs_weights, test_prototypes_save_path) 
-        torch.save(test_new_target, test_new_target_save_path) 
+        torch.save(test_new_target, test_new_target_save_path)
     else:
         logger.info('Loading testing prototypes and testing zeroshot weights...')
         test_prototypes = torch.load(test_zeroshot_weights_save_path)
@@ -678,19 +675,14 @@ def main():
         # eval
         transformer.eval()
         top1, top5, n = 0., 0., 0.
-        for i, (images, _) in enumerate(tqdm(loader)): # 测试集
-            batch = images.shape[0]
-            images = images.cuda()
-            with torch.no_grad():
-                test_features_new = test_features[i * batch:(i+1)*batch, :]
-                new_target = test_new_target[i * batch:(i+1)*batch]
-                topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes[i * batch:(i+1)*batch,:,:], test_zs_weights[i * batch:(i+1)*batch,:,:]
-                new_ligits = transformer(test_features_new, topK_plusone_protos, topK_plusone_zeroshot_weights)
+        with torch.no_grad():
+            topK_plusone_protos, topK_plusone_zeroshot_weights = test_prototypes, test_zs_weights
+            new_ligits = transformer(test_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
 
-            acc1,acc5 = accuracy(new_ligits, new_target, topk=(1,5)) # new_target: [batch, topK+1]
-            top1 += acc1
-            top5 += acc5
-            n += test_features_new.size(0)
+        acc1,acc5 = accuracy(new_ligits, test_new_target, topk=(1,5)) # new_target: [batch, topK+1]
+        top1 += acc1
+        top5 += acc5
+        n += test_features.size(0)
         top1 = (top1 / n) * 100
         top5 = (top5 / n) * 100
         logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")

@@ -14,3 +14,8 @@
 2022-06-01 07:32:12:INFO:Stage2: Saving best model..
 2022-06-01 07:32:12:INFO:Refine time: 2 / 20
 2022-06-01 07:32:39:INFO:LR: 0.019511, Acc: 0.6052 (9683.0/16000), Loss: 1.3507
+2022-06-01 07:33:31:INFO:Refine Top-1 Accuracy: 61.13
+2022-06-01 07:33:31:INFO:Refine Top-5 Accuracy: 89.43
+2022-06-01 07:33:31:INFO:Stage2: Saving best model..
+2022-06-01 07:33:31:INFO:Refine time: 3 / 20
+2022-06-01 07:33:57:INFO:LR: 0.018910, Acc: 0.6136 (9818.0/16000), Loss: 1.3247
