@@ -34,7 +34,7 @@ class ProtoTransformer(nn.Module):
     # new_target : [batch], 取值0~topK
     # prototypes : [batch, topK+1, 1024]
     # zeroshot_weights : [batch, topK+1, 1024]
-    def forward(self, x, new_target, prototypes, zeroshot_weights, alpha=None,beta=None):
+    def forward(self, x, prototypes, zeroshot_weights, alpha=None,beta=None):
         if alpha: # search 阶段
             self.alpha = alpha
             self.beta = beta
@@ -51,8 +51,9 @@ class ProtoTransformer(nn.Module):
         类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成
         '''
         prototypes = prototypes.permute(1,0,2)
-        for i, offset in enumerate(batch_offset):
-            prototypes[i,new_target[i]] += offset
+        batch_offset = batch_offset.unsqueeze(1)
+        prototypes = prototypes + batch_offset
+        prototypes = F.normalize(prototypes, dim=-1)
         x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
         sim =  (prototypes @ x ).squeeze(2) # [batch, topK+1, 1024] @ [batch, 1024, 1] = [batch, topK+1, 1]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, topK+1]
