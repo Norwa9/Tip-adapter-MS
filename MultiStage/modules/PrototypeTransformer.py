@@ -30,8 +30,6 @@ class ProtoTransformer(nn.Module):
                                   embed_dropout=self.embed_dropout,
                                   attn_mask=self.attn_mask)
 
-        pass
-
     # x : [batch, 1024]
     # prototypes : [batch, topK+1, 1024]
     # zeroshot_weights : [batch, topK+1, 1024]
@@ -45,7 +43,7 @@ class ProtoTransformer(nn.Module):
         '''
         prototypes = prototypes.permute(1,0,2) # [batch, topK+1, 1024] -> [topK+1, batch, 1024]
         out_prototypes = self.SALayers(prototypes).permute(1,0,2) # [batch, topK+1, 1024]
-        out_prototypes = F.normalize(out_prototypes,dim=-1)
+        out_prototypes = F.normalize(out_prototypes, dim=-1)
 
         '''
         2.计算logits
@@ -55,7 +53,7 @@ class ProtoTransformer(nn.Module):
         x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
         sim =  (out_prototypes @ x ).squeeze(2) # [batch, topK+1, 1024] @ [batch, 1024, 1] = [batch, topK+1, 1]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, topK+1]
-        zero_shot_logits = (100. * zeroshot_weights @ x ).squeeze(2)   #  [batch,topK+1,1024] @ [batch,1024,1]  =  [batch,topK+1,1]
+        zero_shot_logits = (zeroshot_weights @ x ).squeeze(2)   #  [batch,topK+1,1024] @ [batch,1024,1]  =  [batch,topK+1,1]
         logits = new_knowledges + zero_shot_logits # [batch,topK+1]
         
         return logits

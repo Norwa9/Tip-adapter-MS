@@ -342,7 +342,7 @@ def main():
     # refine 
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=20)
-    parser.add_argument('--refine_lr', type=float, default=0.02)
+    parser.add_argument('--refine_lr', type=float, default=0.01)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
 
@@ -358,8 +358,8 @@ def main():
     parser.add_argument('--relu_dropout', type=float, default=0.1)
     parser.add_argument('--res_dropout', type=float, default=0.1)
     parser.add_argument('--embed_dropout', type=float, default=0.25)
-    parser.add_argument('--attn_mask', action='store_true',
-                    help='use attention mask for Transformer (default: false)')
+    parser.add_argument('--attn_mask', action='store_false',
+                    help='use attention mask for Transformer (default: true)')
 
     
     args = parser.parse_args()
