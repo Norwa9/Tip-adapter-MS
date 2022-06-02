@@ -1,0 +1,10 @@
+2022-06-02 14:11:54:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=2048, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=20, refine_lr=0.005, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-02 14:12:02:INFO:1000 classes, 7 templates
+2022-06-02 14:12:17:INFO:Load data finished.
+2022-06-02 14:12:17:INFO:Loading saved text features.
+2022-06-02 14:12:17:INFO:Loading training image features
+2022-06-02 14:12:17:INFO:start saving testing image features
+2022-06-02 14:12:18:INFO:Loading fintuned adapter parameters..
+2022-06-02 14:12:18:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-02 14:12:20:INFO:Refine time: 1 / 20
+2022-06-02 14:12:46:INFO:LR: 0.004969, Acc: 0.7601 (12161.0/16000), Loss: 1.7467

@@ -29,7 +29,7 @@ class ProtoTransformer(nn.Module):
                                   res_dropout=self.res_dropout,
                                   embed_dropout=self.embed_dropout,
                                   attn_mask=self.attn_mask)
-        self.cls = nn.Linear(1024, 1000)
+        self.linear = nn.Linear(2048, 1024)
 
     '''
     x : [batch, 1024]
@@ -43,16 +43,17 @@ class ProtoTransformer(nn.Module):
             self.beta = beta
         '''
         1.输入prototypes经过自注意力交互, 取第一个输出当做GT的偏移量
+        self-attention 的输入是prototypes与其x的相加
         '''
-        prototypes = prototypes.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
-        batch_offset = self.SALayers(prototypes)[0] # [batch, 1024] , 表示每个样本的GT prototype应该加上的偏移量
-
+        
+        in_feature = prototypes + x.unsqueeze(1)
+        in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
+        batch_offset = self.SALayers(in_feature)[0] # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
         '''
         2.计算logits
         将GT 对应的prototype加上offset,normalize后得到新protots,再令输入x与它们计算相似度输出预测概率分布
         类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成
         '''
-        prototypes = prototypes.permute(1,0,2)
         batch_offset = batch_offset.unsqueeze(1)
         prototypes = prototypes + batch_offset
         prototypes = F.normalize(prototypes, dim=-1)
@@ -86,8 +87,6 @@ class ProtoTransformer(nn.Module):
     #     pred = self.cls(out) # [batch, 1000]
         
     #     return pred
-    
-
 
     
 if __name__ == '__main__':

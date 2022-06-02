@@ -1,0 +1,36 @@
+2022-06-02 09:25:47:INFO:Namespace(alpha=1, attn_dropout=0.1, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=2, refine_epoch=20, refine_lr=0.01, relu_dropout=0.1, res_dropout=0.1, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-02 09:25:56:INFO:1000 classes, 7 templates
+2022-06-02 09:26:00:INFO:Load data finished.
+2022-06-02 09:26:01:INFO:Loading saved text features.
+2022-06-02 09:26:01:INFO:Loading training image features
+2022-06-02 09:26:01:INFO:start saving testing image features
+2022-06-02 09:26:01:INFO:Loading fintuned adapter parameters..
+2022-06-02 09:26:01:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-02 09:26:03:INFO:Refine time: 1 / 20
+2022-06-02 09:26:30:INFO:LR: 0.009938, Acc: 0.5670 (9072.0/16000), Loss: 1.7724
+2022-06-02 09:26:32:INFO:Refine Top-1 Accuracy: 63.12
+2022-06-02 09:26:32:INFO:Stage2: Saving best model..
+2022-06-02 09:26:32:INFO:Refine time: 2 / 20
+2022-06-02 09:26:57:INFO:LR: 0.009755, Acc: 0.7074 (11319.0/16000), Loss: 1.7663
+2022-06-02 09:26:59:INFO:Refine Top-1 Accuracy: 64.42
+2022-06-02 09:26:59:INFO:Stage2: Saving best model..
+2022-06-02 09:26:59:INFO:Refine time: 3 / 20
+2022-06-02 09:27:27:INFO:LR: 0.009455, Acc: 0.7266 (11626.0/16000), Loss: 1.7653
+2022-06-02 09:27:29:INFO:Refine Top-1 Accuracy: 64.51
+2022-06-02 09:27:29:INFO:Stage2: Saving best model..
+2022-06-02 09:27:29:INFO:Refine time: 4 / 20
+2022-06-02 09:27:56:INFO:LR: 0.009045, Acc: 0.7288 (11661.0/16000), Loss: 1.7648
+2022-06-02 09:27:58:INFO:Refine Top-1 Accuracy: 64.67
+2022-06-02 09:27:58:INFO:Stage2: Saving best model..
+2022-06-02 09:27:58:INFO:Refine time: 5 / 20
+2022-06-02 09:28:24:INFO:LR: 0.008536, Acc: 0.7361 (11778.0/16000), Loss: 1.7632
+2022-06-02 09:28:26:INFO:Refine Top-1 Accuracy: 65.07
+2022-06-02 09:28:26:INFO:Stage2: Saving best model..
+2022-06-02 09:28:27:INFO:Refine time: 6 / 20
+2022-06-02 09:28:54:INFO:LR: 0.007939, Acc: 0.7453 (11925.0/16000), Loss: 1.7584
+2022-06-02 09:28:57:INFO:Refine Top-1 Accuracy: 65.53
+2022-06-02 09:28:57:INFO:Stage2: Saving best model..
+2022-06-02 09:28:57:INFO:Refine time: 7 / 20
+2022-06-02 09:29:28:INFO:LR: 0.007270, Acc: 0.8556 (13690.0/16000), Loss: 1.7432
+2022-06-02 09:29:30:INFO:Refine Top-1 Accuracy: 61.45
+2022-06-02 09:29:30:INFO:Refine time: 8 / 20

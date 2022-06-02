@@ -14,6 +14,7 @@ import argparse
 from util import *
 import sys
 from modules.PrototypeTransformer import *
+from modules_0602.util_0602 import *
 
 
 print("Torch version:", torch.__version__)
@@ -340,7 +341,7 @@ def main():
     # refine 
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=20)
-    parser.add_argument('--refine_lr', type=float, default=0.01)
+    parser.add_argument('--refine_lr', type=float, default=0.005)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
 
@@ -350,11 +351,11 @@ def main():
 
     # ProtoTransofrmer
     parser.add_argument('--embed_dim', type=int, default=1024)
-    parser.add_argument('--num_heads', type=int, default=4)
+    parser.add_argument('--num_heads', type=int, default=1)
     parser.add_argument('--layers', type=int, default=1)
-    parser.add_argument('--attn_dropout', type=float, default=0.1)
-    parser.add_argument('--relu_dropout', type=float, default=0.1)
-    parser.add_argument('--res_dropout', type=float, default=0.1)
+    parser.add_argument('--attn_dropout', type=float, default=0.2)
+    parser.add_argument('--relu_dropout', type=float, default=0.2)
+    parser.add_argument('--res_dropout', type=float, default=0.2)
     parser.add_argument('--embed_dropout', type=float, default=0.25)
     parser.add_argument('--attn_mask', action='store_false',
                     help='use attention mask for Transformer (default: true)')
@@ -651,9 +652,6 @@ def main():
         n = 0
         loss_list = []
         logger.info(f'Refine time: {train_idx+1} / {args.refine_epoch}')
-        
-        alpha = args.alpha
-        beta = args.beta
 
         for i, (images, target) in enumerate(tqdm(train_loader_shuffle)):
             images = images.cuda()
@@ -689,14 +687,9 @@ def main():
 
         # eval
         transformer.eval()
-        top1, n = 0., 0.
-        with torch.no_grad():
-            new_logits = transformer(test_features, test_prototypes, test_zs_weights)
-            '''test_topK_targets:[batch,topK],test_labels:[batch],如果new_logits中预测的top1是test_labels,则算预测正确'''
-            acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]
-            top1 = acc1_num
-            n = test_features.shape[0]
-        top1 = (top1 / n) * 100
+        
+        top1 = test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
+
         logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")
         if top1 > best_top1:
             logger.info(f'Stage2: Saving best model..')
@@ -711,9 +704,7 @@ def main():
     # ------------------------------------------ Stage2: Search ------------------------------------------
     if search:
         logger.info("Begin to search")
-
         transformer.load_state_dict(torch.load(state_dict_save_path_transforer))
-
         alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6] 
         beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
         best_top1 = 0
@@ -721,11 +712,7 @@ def main():
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
-                with torch.no_grad():
-                    new_logits = transformer(test_features, test_prototypes, test_zs_weights,alpha=alpha,beta=beta)
-                acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]``
-                n = test_features.shape[0]
-                top1 = (acc1_num / n) * 100
+                top1 = test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
                 if top1 > best_top1:
                     logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}')
                     torch.save(transformer.state_dict(), state_dict_save_path_transforer)
