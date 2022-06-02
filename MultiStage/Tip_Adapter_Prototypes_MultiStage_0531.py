@@ -307,6 +307,9 @@ def main():
     test_prototypes_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_prototypes.pt"
     test_topK_target_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/test_topK_target.pt"
 
+    best_adapter_alpha_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/best_adapter_alpha.pt"
+    best_adapter_beta_save_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/checkpoints/best_adapter_beta.pt"
+
     load_train = False
     load_test = False
     load_text_features = False
@@ -493,7 +496,7 @@ def main():
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=args.lr, eps=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epoch * len(train_loader_shuffle))
         
-        best_top1 = 0
+        best_top1,best_top2,best_top3,best_top4,best_top5 = 0,0,0,0,0
         best_epoch = 0
 
         for train_idx in range(args.train_epoch):
@@ -539,12 +542,7 @@ def main():
 
             top1, top5, n = 0., 0., 0.
             top2,top3,top4 = 0., 0., 0.
-            with torch.no_grad():
-                test_features = torch.load(test_features_path)
-                test_labels = torch.load(test_targets_path)
-                test_features_new = test_features
-
-            logits, _ = adapter(test_features_new, test_labels)
+            logits, _ = adapter(test_features, test_labels)
             acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
             top1 += acc1
             top2 += acc2
@@ -575,14 +573,36 @@ def main():
                 best_epoch = train_idx + 1
             
         logger.info(f"Stage1: Best Testing Top 1~5 Accuracy: {best_top1:.2f},{best_top2:.2f},{best_top3:.2f},{best_top4:.2f},{best_top5:.2f}, at Epoch: {best_epoch}")
-    
+        # ------------------------------------------ Stage1: Search ------------------------------------------
+        logger.info("Begin to search adapter's best alpha & beta")
+        adapter.load_state_dict(torch.load(state_dict_save_path))
+        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(4)] # [1, 2] 
+        beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
+        best_top1 = 0
+        adapter.eval()
+        for alpha in alpha_list:
+            for beta in beta_list:
+                logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
+                with torch.no_grad():
+                    logits, _ = adapter(test_features, test_labels,alpha=alpha,beta=beta)
+                acc1,acc5 = accuracy(logits, test_labels, topk=(1,5))
+                n = test_features.shape[0]
+                top1 = (acc1 / n) * 100
+                top5 = (acc5 / n) * 100
+                if top1 > best_top1:
+                    logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f},Top-5 acc: {top5:.2f}')
+                    torch.save(alpha,best_adapter_alpha_save_path)
+                    torch.save(beta,best_adapter_beta_save_path)
+                    best_top1 = top1
     # ------------------------------------------ Load testing prototypes ------------------------------------------
     '''
-    训练完adapter后, 预先存储测试集的topK+1个prototypes和zeroshot weights
+    训练完并search最佳的adapter超参数之后, 预先存储测试集的topK个prototypes和zeroshot weights
     '''
     adapter.load_state_dict(torch.load(state_dict_save_path))
-    test_prototypes = [] # [len(test), topK+1, 1024], 测试集的topK+1个prototypes
-    test_zs_weights = [] # [len(test), topK+1, 1024], 测试集的topK+zeroshot weights 
+    best_adapter_alpha = torch.load(best_adapter_alpha_save_path)
+    best_adapter_beta = torch.load(best_adapter_beta_save_path)
+    test_prototypes = [] # [len(test), topK, 1024], 测试集的topK个prototypes
+    test_zs_weights = [] # [len(test), topK, 1024], 测试集的topK个zeroshot weights 
     test_topK_targets = [] # [len(test), topK] 
     if not load_testing_prototypes:
         logger.info('Saving testing prototypes and testing zeroshot weights...')
@@ -592,7 +612,7 @@ def main():
                 target = target.cuda()
                 image_features = model.encode_image(images)
                 image_features /= image_features.norm(dim=-1, keepdim=True)
-                logits, _ = adapter(image_features, target)
+                logits, _ = adapter(image_features, target, alpha=best_adapter_alpha, beta=best_adapter_beta)
                 topK_protos, topK_zeroshot_weights = get_topK_ProtosAndZeroshotWeight(logits,adapter.proto,adapter.zero_shots_weight,args.topK) # [batch,topK,1024]
                 test_prototypes.append(topK_protos)
                 test_zs_weights.append(topK_zeroshot_weights)
@@ -671,9 +691,8 @@ def main():
         transformer.eval()
         top1, n = 0., 0.
         with torch.no_grad():
-            # TODO: 输入topK prototypes, 输出预测的5分类label, 需要映射回1000类的label
-            # TODO: accuracy需要修改,输入一个batch的预测label和实际label,输出准确率
             new_logits = transformer(test_features, test_prototypes, test_zs_weights)
+            '''test_topK_targets:[batch,topK],test_labels:[batch],如果new_logits中预测的top1是test_labels,则算预测正确'''
             acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]
             top1 = acc1_num
             n = test_features.shape[0]
@@ -689,10 +708,7 @@ def main():
     logger.info(f"Stage2: Best Testing Top 1 Accuracy: {best_top1:.2f}, at Epoch: {best_epoch}")
 
 
-    # ------------------------------------------ Search ------------------------------------------
-    '''
-    TODO Search放在第一阶段之后还是第二阶段之后?
-    '''
+    # ------------------------------------------ Stage2: Search ------------------------------------------
     if search:
         logger.info("Begin to search")
 
@@ -706,15 +722,13 @@ def main():
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
                 with torch.no_grad():
-                    new_logits = transformer(test_features, test_prototypes, test_zs_weights)
-                acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]
-                top1 = acc1_num
+                    new_logits = transformer(test_features, test_prototypes, test_zs_weights,alpha=alpha,beta=beta)
+                acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]``
                 n = test_features.shape[0]
-                top1 = (acc1 / n) * 100
-
+                top1 = (acc1_num / n) * 100
                 if top1 > best_top1:
-                    text = f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}'
-                    logger.info(text)
+                    logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}')
+                    torch.save(transformer.state_dict(), state_dict_save_path_transforer)
                     best_top1 = top1
 
         logger.info(f"{name}, {k_shot} shot. Best Top-1 {best_top1:.2f}")
