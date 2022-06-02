@@ -247,9 +247,6 @@ def get_topK_plusone_protos(proto_indices, orgin_protos:torch.Tensor, orgin_zero
 
     return topK_plusone_protos, topK_plusone_zeroshot_weights
 
-# ----------------------------------------other---------------------------------------------
-
-
 def get_topK_ProtosAndZeroshotWeight(logits:torch.Tensor, orgin_protos:torch.Tensor, orgin_zeroshot_weights:torch.Tensor,topK:int):
     indices = logits.topk(topK)[1] # [batch,topK]
     cls_num = orgin_protos.shape[0]
@@ -263,6 +260,38 @@ def get_topK_ProtosAndZeroshotWeight(logits:torch.Tensor, orgin_protos:torch.Ten
     topK_zeroshot_weights = one_hot_indices @ orgin_zeroshot_weights.T
 
     return topK_protos,topK_zeroshot_weights
+
+# ----------------------------------------metrics---------------------------------------------
+'''
+训练阶段使用的准确率算法
+'''
+def accuracy(output, target, topk=(1,)):
+    pred = output.topk(max(topk), 1, True, True)[1].t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    return [float(correct[:k].reshape(-1).float().sum(0, keepdim=True).cpu().numpy()) for k in topk]
+'''
+测试阶段使用的准确率算法,计算一个batch中top1正确个数
+test_logits:[batch,topK]
+test_topK_targets:[batch,topK],里面不一定有正确的测试标签
+test_target=[batch],测试标签
+'''
+def accuracy_test(test_logits:torch.Tensor, test_topK_targets,test_target):
+    acc1 = 0.
+    top1_indices = test_logits.topk(1)[1]
+    for i,target in enumerate(test_target):
+        j = top1_indices[i][0]
+        if target == test_topK_targets[i][j]:
+            acc1 += 1
+        
+    return acc1
+
+
+
+# ----------------------------------------other---------------------------------------------
+
+
+
+
 
 
 def get_logger(log_dir):

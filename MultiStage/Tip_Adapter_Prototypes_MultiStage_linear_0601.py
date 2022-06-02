@@ -322,7 +322,7 @@ def main():
     load_train = True
     load_test = True
     load_text_features = True
-    # load_adapter = True
+    load_adapter = True
     search = True 
     load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
@@ -572,7 +572,7 @@ def main():
             logger.info(f"Testing Top-10 Accuracy: {top10:.2f}")
 
             if top1 > best_top1:
-                logger.info(f'Stage1: Saving best model..')
+                logger.info(f'Stage1: Saving best adapter..')
                 torch.save(adapter.state_dict(), state_dict_save_path)
 
                 best_top1 = top1
@@ -690,7 +690,7 @@ def main():
         logger.info(f"Refine Top-5 Accuracy: {top5:.2f}")
         logger.info(f"Refine Top-10 Accuracy: {top10:.2f}")
         if top1 > best_top1:
-            logger.info(f'Stage2: Saving best model..')
+            logger.info(f'Stage2: Saving best transformer..')
             torch.save(transformer.state_dict(), state_dict_save_path_transforer)
 
             best_top1 = top1
