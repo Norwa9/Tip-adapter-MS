@@ -245,12 +245,25 @@ def get_topK_plusone_protos(proto_indices, orgin_protos:torch.Tensor, orgin_zero
     topK_plusone_protos = one_hot_proto_indices @ orgin_protos # [batch,topK+1, 1000] @ [1000, 1024] -> [batch,topK+1, 1024]
     topK_plusone_zeroshot_weights = one_hot_proto_indices @ orgin_zeroshot_weights
 
-
-
-
     return topK_plusone_protos, topK_plusone_zeroshot_weights
 
 # ----------------------------------------other---------------------------------------------
+
+
+def get_topK_ProtosAndZeroshotWeight(logits:torch.Tensor, orgin_protos:torch.Tensor, orgin_zeroshot_weights:torch.Tensor,topK:int):
+    indices = logits.topk(topK)[1] # [batch,topK]
+    cls_num = orgin_protos.shape[0]
+    one_hot_indices = torch.zeros(indices.shape[0],indices.shape[1], cls_num) # [batch, topK, 1000]
+    for i,indices in enumerate(indices):
+        for j,index in enumerate(indices):
+            one_hot_indices[i][j][index] = 1
+
+    one_hot_indices = one_hot_indices.cuda()
+    topK_protos = one_hot_indices @ orgin_protos # [batch,topK, 1000] @ [1000, 1024] -> [batch,topK, 1024]
+    topK_zeroshot_weights = one_hot_indices @ orgin_zeroshot_weights.T
+
+    return topK_protos,topK_zeroshot_weights
+
 
 def get_logger(log_dir):
     # set log path
