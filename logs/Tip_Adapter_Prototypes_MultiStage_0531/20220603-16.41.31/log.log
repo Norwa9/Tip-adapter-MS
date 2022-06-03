@@ -1,0 +1,121 @@
+2022-06-03 08:41:31:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=30, refine_lr=0.02, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-03 08:41:39:INFO:1000 classes, 7 templates
+2022-06-03 08:41:55:INFO:Load data finished.
+2022-06-03 08:41:55:INFO:Loading saved text features.
+2022-06-03 08:41:55:INFO:Loading training image features
+2022-06-03 08:41:56:INFO:start saving testing image features
+2022-06-03 08:41:56:INFO:Loading fintuned adapter parameters..
+2022-06-03 08:41:56:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-03 08:41:58:INFO:Refine time: 1 / 30
+2022-06-03 08:42:25:INFO:LR: 0.019945, Acc: 0.4710 (7536.0/16000), Loss: 1.6934
+2022-06-03 08:42:27:INFO:Refine Top-1 Accuracy: 50.44
+2022-06-03 08:42:27:INFO:Stage2: Saving best model..
+2022-06-03 08:42:28:INFO:Refine time: 2 / 30
+2022-06-03 08:42:58:INFO:LR: 0.019781, Acc: 0.4904 (7846.0/16000), Loss: 1.6556
+2022-06-03 08:43:00:INFO:Refine Top-1 Accuracy: 53.58
+2022-06-03 08:43:00:INFO:Stage2: Saving best model..
+2022-06-03 08:43:00:INFO:Refine time: 3 / 30
+2022-06-03 08:43:31:INFO:LR: 0.019511, Acc: 0.5104 (8166.0/16000), Loss: 1.6441
+2022-06-03 08:43:33:INFO:Refine Top-1 Accuracy: 54.96
+2022-06-03 08:43:33:INFO:Stage2: Saving best model..
+2022-06-03 08:43:33:INFO:Refine time: 4 / 30
+2022-06-03 08:44:03:INFO:LR: 0.019135, Acc: 0.5172 (8275.0/16000), Loss: 1.6364
+2022-06-03 08:44:06:INFO:Refine Top-1 Accuracy: 54.00
+2022-06-03 08:44:06:INFO:Refine time: 5 / 30
+2022-06-03 08:44:37:INFO:LR: 0.018660, Acc: 0.5245 (8392.0/16000), Loss: 1.6314
+2022-06-03 08:44:39:INFO:Refine Top-1 Accuracy: 55.40
+2022-06-03 08:44:39:INFO:Stage2: Saving best model..
+2022-06-03 08:44:39:INFO:Refine time: 6 / 30
+2022-06-03 08:45:10:INFO:LR: 0.018090, Acc: 0.5339 (8543.0/16000), Loss: 1.6263
+2022-06-03 08:45:12:INFO:Refine Top-1 Accuracy: 54.79
+2022-06-03 08:45:12:INFO:Refine time: 7 / 30
+2022-06-03 08:45:41:INFO:LR: 0.017431, Acc: 0.5350 (8560.0/16000), Loss: 1.6215
+2022-06-03 08:45:43:INFO:Refine Top-1 Accuracy: 55.65
+2022-06-03 08:45:43:INFO:Stage2: Saving best model..
+2022-06-03 08:45:43:INFO:Refine time: 8 / 30
+2022-06-03 08:46:12:INFO:LR: 0.016691, Acc: 0.5414 (8663.0/16000), Loss: 1.6197
+2022-06-03 08:46:14:INFO:Refine Top-1 Accuracy: 56.63
+2022-06-03 08:46:14:INFO:Stage2: Saving best model..
+2022-06-03 08:46:14:INFO:Refine time: 9 / 30
+2022-06-03 08:46:41:INFO:LR: 0.015878, Acc: 0.5536 (8857.0/16000), Loss: 1.6132
+2022-06-03 08:46:44:INFO:Refine Top-1 Accuracy: 57.14
+2022-06-03 08:46:44:INFO:Stage2: Saving best model..
+2022-06-03 08:46:44:INFO:Refine time: 10 / 30
+2022-06-03 08:47:12:INFO:LR: 0.015000, Acc: 0.5478 (8765.0/16000), Loss: 1.6130
+2022-06-03 08:47:14:INFO:Refine Top-1 Accuracy: 56.63
+2022-06-03 08:47:14:INFO:Refine time: 11 / 30
+2022-06-03 08:47:42:INFO:LR: 0.014067, Acc: 0.5586 (8938.0/16000), Loss: 1.6093
+2022-06-03 08:47:44:INFO:Refine Top-1 Accuracy: 56.88
+2022-06-03 08:47:44:INFO:Refine time: 12 / 30
+2022-06-03 08:48:12:INFO:LR: 0.013090, Acc: 0.5631 (9009.0/16000), Loss: 1.6061
+2022-06-03 08:48:14:INFO:Refine Top-1 Accuracy: 57.52
+2022-06-03 08:48:14:INFO:Stage2: Saving best model..
+2022-06-03 08:48:14:INFO:Refine time: 13 / 30
+2022-06-03 08:48:42:INFO:LR: 0.012079, Acc: 0.5747 (9196.0/16000), Loss: 1.5963
+2022-06-03 08:48:44:INFO:Refine Top-1 Accuracy: 58.64
+2022-06-03 08:48:44:INFO:Stage2: Saving best model..
+2022-06-03 08:48:44:INFO:Refine time: 14 / 30
+2022-06-03 08:49:13:INFO:LR: 0.011045, Acc: 0.5809 (9294.0/16000), Loss: 1.5904
+2022-06-03 08:49:15:INFO:Refine Top-1 Accuracy: 58.49
+2022-06-03 08:49:15:INFO:Refine time: 15 / 30
+2022-06-03 08:49:42:INFO:LR: 0.010000, Acc: 0.5847 (9356.0/16000), Loss: 1.5877
+2022-06-03 08:49:44:INFO:Refine Top-1 Accuracy: 59.01
+2022-06-03 08:49:44:INFO:Stage2: Saving best model..
+2022-06-03 08:49:44:INFO:Refine time: 16 / 30
+2022-06-03 08:50:13:INFO:LR: 0.008955, Acc: 0.6003 (9605.0/16000), Loss: 1.5758
+2022-06-03 08:50:15:INFO:Refine Top-1 Accuracy: 59.60
+2022-06-03 08:50:15:INFO:Stage2: Saving best model..
+2022-06-03 08:50:15:INFO:Refine time: 17 / 30
+2022-06-03 08:50:42:INFO:LR: 0.007921, Acc: 0.6036 (9658.0/16000), Loss: 1.5723
+2022-06-03 08:50:44:INFO:Refine Top-1 Accuracy: 60.98
+2022-06-03 08:50:44:INFO:Stage2: Saving best model..
+2022-06-03 08:50:45:INFO:Refine time: 18 / 30
+2022-06-03 08:51:12:INFO:LR: 0.006910, Acc: 0.6240 (9984.0/16000), Loss: 1.5586
+2022-06-03 08:51:14:INFO:Refine Top-1 Accuracy: 61.62
+2022-06-03 08:51:14:INFO:Stage2: Saving best model..
+2022-06-03 08:51:14:INFO:Refine time: 19 / 30
+2022-06-03 08:51:41:INFO:LR: 0.005933, Acc: 0.6358 (10172.0/16000), Loss: 1.5464
+2022-06-03 08:51:43:INFO:Refine Top-1 Accuracy: 62.64
+2022-06-03 08:51:43:INFO:Stage2: Saving best model..
+2022-06-03 08:51:43:INFO:Refine time: 20 / 30
+2022-06-03 08:52:10:INFO:LR: 0.005000, Acc: 0.6504 (10407.0/16000), Loss: 1.5322
+2022-06-03 08:52:13:INFO:Refine Top-1 Accuracy: 63.33
+2022-06-03 08:52:13:INFO:Stage2: Saving best model..
+2022-06-03 08:52:13:INFO:Refine time: 21 / 30
+2022-06-03 08:52:40:INFO:LR: 0.004122, Acc: 0.6601 (10562.0/16000), Loss: 1.5214
+2022-06-03 08:52:42:INFO:Refine Top-1 Accuracy: 63.85
+2022-06-03 08:52:42:INFO:Stage2: Saving best model..
+2022-06-03 08:52:42:INFO:Refine time: 22 / 30
+2022-06-03 08:53:08:INFO:LR: 0.003309, Acc: 0.6728 (10765.0/16000), Loss: 1.5087
+2022-06-03 08:53:10:INFO:Refine Top-1 Accuracy: 64.44
+2022-06-03 08:53:10:INFO:Stage2: Saving best model..
+2022-06-03 08:53:10:INFO:Refine time: 23 / 30
+2022-06-03 08:53:37:INFO:LR: 0.002569, Acc: 0.6772 (10835.0/16000), Loss: 1.5033
+2022-06-03 08:53:39:INFO:Refine Top-1 Accuracy: 64.64
+2022-06-03 08:53:39:INFO:Stage2: Saving best model..
+2022-06-03 08:53:39:INFO:Refine time: 24 / 30
+2022-06-03 08:54:06:INFO:LR: 0.001910, Acc: 0.6856 (10969.0/16000), Loss: 1.4959
+2022-06-03 08:54:09:INFO:Refine Top-1 Accuracy: 64.82
+2022-06-03 08:54:09:INFO:Stage2: Saving best model..
+2022-06-03 08:54:09:INFO:Refine time: 25 / 30
+2022-06-03 08:54:39:INFO:LR: 0.001340, Acc: 0.6898 (11037.0/16000), Loss: 1.4926
+2022-06-03 08:54:41:INFO:Refine Top-1 Accuracy: 65.01
+2022-06-03 08:54:41:INFO:Stage2: Saving best model..
+2022-06-03 08:54:41:INFO:Refine time: 26 / 30
+2022-06-03 08:55:11:INFO:LR: 0.000865, Acc: 0.6889 (11022.0/16000), Loss: 1.4913
+2022-06-03 08:55:14:INFO:Refine Top-1 Accuracy: 65.01
+2022-06-03 08:55:14:INFO:Refine time: 27 / 30
+2022-06-03 08:55:44:INFO:LR: 0.000489, Acc: 0.6912 (11059.0/16000), Loss: 1.4902
+2022-06-03 08:55:47:INFO:Refine Top-1 Accuracy: 65.06
+2022-06-03 08:55:47:INFO:Stage2: Saving best model..
+2022-06-03 08:55:47:INFO:Refine time: 28 / 30
+2022-06-03 08:56:18:INFO:LR: 0.000219, Acc: 0.6949 (11118.0/16000), Loss: 1.4878
+2022-06-03 08:56:20:INFO:Refine Top-1 Accuracy: 65.06
+2022-06-03 08:56:20:INFO:Refine time: 29 / 30
+2022-06-03 08:56:53:INFO:LR: 0.000055, Acc: 0.6981 (11170.0/16000), Loss: 1.4870
+2022-06-03 08:56:55:INFO:Refine Top-1 Accuracy: 65.07
+2022-06-03 08:56:55:INFO:Stage2: Saving best model..
+2022-06-03 08:56:55:INFO:Refine time: 30 / 30
+2022-06-03 08:57:25:INFO:LR: 0.000000, Acc: 0.6979 (11167.0/16000), Loss: 1.4857
+2022-06-03 08:57:27:INFO:Refine Top-1 Accuracy: 65.06
+2022-06-03 08:57:27:INFO:Stage2: Best Testing Top 1 Accuracy: 65.07, at Epoch: 29

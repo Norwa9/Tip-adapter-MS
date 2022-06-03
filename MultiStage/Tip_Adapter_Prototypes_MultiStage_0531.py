@@ -322,7 +322,7 @@ def main():
     load_test = True
     load_text_features = True
     load_adapter = True
-    search = True 
+    # search = True 
     load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
@@ -340,7 +340,7 @@ def main():
     
     # refine 
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_epoch', type=int, default=20)
+    parser.add_argument('--refine_epoch', type=int, default=30)
     parser.add_argument('--refine_lr', type=float, default=0.005)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
@@ -664,8 +664,8 @@ def main():
             # 提取包含目标prototype的topK+1个prototypes的下标
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
-            new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            # new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
+            # new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             

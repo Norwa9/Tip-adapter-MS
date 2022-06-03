@@ -29,7 +29,7 @@ class ProtoTransformer(nn.Module):
                                   res_dropout=self.res_dropout,
                                   embed_dropout=self.embed_dropout,
                                   attn_mask=self.attn_mask)
-        self.linear = nn.Linear(2048, 1024)
+        self.linear = nn.Linear(1024, 1)
 
     '''
     x : [batch, 1024]
@@ -41,25 +41,18 @@ class ProtoTransformer(nn.Module):
         if alpha: # search 阶段
             self.alpha = alpha
             self.beta = beta
-        '''
-        1.输入prototypes经过自注意力交互, 取第一个输出当做GT的偏移量
-        self-attention 的输入是prototypes与其x的相加
-        '''
+
+        
         in_feature = (prototypes + x.unsqueeze(1) + zeroshot_weights) / 3
         in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
         out_feature = self.SALayers(in_feature).permute(1,0,2) # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
-        '''
 
-
-        2.计算logits
-        将GT 对应的prototype加上offset,normalize后得到新protots,再令输入x与它们计算相似度输出预测概率分布
-        类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成
-        '''
-        out_feature = F.normalize(out_feature, dim=-1)
-        x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
-        sim =  (out_feature @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
-        new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
-        logits = new_knowledges
+        # out_feature = F.normalize(out_feature, dim=-1)
+        # x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
+        # sim =  (out_feature @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
+        # new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
+        # logits = new_knowledges
+        logits = self.linear(F.relu(out_feature)).squeeze(-1)
         
         return logits
 
