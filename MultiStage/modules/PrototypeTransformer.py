@@ -61,9 +61,9 @@ class ProtoTransformer(nn.Module):
         sim =  (prototypes @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
         zero_shot_logits = (zeroshot_weights @ x ).squeeze(2)   #  [batch,proto_num,1024] @ [batch,1024,1]  =  [batch,proto_num,1]
-        logits = new_knowledges + zero_shot_logits # [batch,proto_num]
         # TODO 去掉 zero_shot_logits
-        # logits = new_knowledges
+        # logits = new_knowledges + zero_shot_logits # [batch,proto_num]
+        logits = new_knowledges
         
         return logits
 
@@ -103,11 +103,11 @@ if __name__ == '__main__':
         beta = 1.0
 
     query = torch.rand(16,1024)
-    prototyes = torch.rand(16,6,1024)
+    p = torch.rand(16,6,1024)
     zeroshot_weights = torch.rand(16,6,1024)
     args = test()
     net = ProtoTransformer(args)
-    logits = net(query,prototyes,zeroshot_weights)
+    logits = net(query,p,zeroshot_weights)
 
     print(logits.shape)
     print("Model parameters:", f"{np.sum([int(np.prod(p.shape)) for p in net.parameters()]):,}")

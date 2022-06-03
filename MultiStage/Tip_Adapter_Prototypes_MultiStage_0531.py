@@ -323,7 +323,7 @@ def main():
     load_text_features = True
     load_adapter = True
     search = True 
-    load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
+    # load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
     # lr 
@@ -687,8 +687,8 @@ def main():
 
         # eval
         transformer.eval()
-        
-        top1 = test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
+
+        top1 = test_stage2(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
 
         logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")
         if top1 > best_top1:
@@ -712,7 +712,7 @@ def main():
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
-                top1 = test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
+                top1 = test_stage2(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
                 if top1 > best_top1:
                     logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}')
                     torch.save(transformer.state_dict(), state_dict_save_path_transforer)
