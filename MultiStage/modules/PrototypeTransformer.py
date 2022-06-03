@@ -47,7 +47,7 @@ class ProtoTransformer(nn.Module):
         '''
         in_feature = (prototypes + x.unsqueeze(1) + zeroshot_weights) / 3
         in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
-        batch_offset = self.SALayers(in_feature)[0] # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
+        out_feature = self.SALayers(in_feature).permute(1,0,2) # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
         '''
 
 
@@ -55,15 +55,10 @@ class ProtoTransformer(nn.Module):
         将GT 对应的prototype加上offset,normalize后得到新protots,再令输入x与它们计算相似度输出预测概率分布
         类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成
         '''
-        batch_offset = batch_offset.unsqueeze(1)
-        prototypes = prototypes + batch_offset
-        prototypes = F.normalize(prototypes, dim=-1)
+        out_feature = F.normalize(out_feature, dim=-1)
         x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
-        sim =  (prototypes @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
+        sim =  (out_feature @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
-        zero_shot_logits = (zeroshot_weights @ x ).squeeze(2)   #  [batch,proto_num,1024] @ [batch,1024,1]  =  [batch,proto_num,1]
-        # TODO 去掉 zero_shot_logits
-        # logits = new_knowledges + zero_shot_logits # [batch,proto_num]
         logits = new_knowledges
         
         return logits
