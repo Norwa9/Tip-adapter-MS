@@ -45,11 +45,12 @@ class ProtoTransformer(nn.Module):
         1.输入prototypes经过自注意力交互, 取第一个输出当做GT的偏移量
         self-attention 的输入是prototypes与其x的相加
         '''
-        
-        in_feature = prototypes + x.unsqueeze(1)
+        in_feature = (prototypes + x.unsqueeze(1) + zeroshot_weights) / 3
         in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
         batch_offset = self.SALayers(in_feature)[0] # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
         '''
+
+
         2.计算logits
         将GT 对应的prototype加上offset,normalize后得到新protots,再令输入x与它们计算相似度输出预测概率分布
         类似adapter,预测概率分布由直接点乘的logits和zeroshot prompts的logits两部分组成

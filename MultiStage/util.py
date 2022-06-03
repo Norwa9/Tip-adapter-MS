@@ -183,13 +183,15 @@ def topK_indices_to_mask_V2(logits:torch.tensor, target:torch.tensor, class_num 
     return masks_sample, masks_class
 
 '''
-输入:一个样本的预测logits
+输入:
+    1.一个样本的预测logits
+    2.该样本的标签target
+    3.需要选取多少个原型topK
 输出:其最接近的topK+1个prototypes的下标:
     1.new_target:[batch], topK+1分类的下标.
     2.origin_target:[batch,topK+1], 每个样本肯定包含其target的topK+1类下标
 '''
 def find_topk_plus_one(logits:torch.Tensor, target:torch.Tensor, topK:int):
-    cls_num = logits.shape[1]
     batch = logits.shape[0]
 
     batch_topk_indices = logits.topk(topK)[1] # [batch , topK]

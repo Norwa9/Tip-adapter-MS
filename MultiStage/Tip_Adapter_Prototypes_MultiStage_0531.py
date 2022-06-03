@@ -14,7 +14,7 @@ import argparse
 from util import *
 import sys
 from modules.PrototypeTransformer import *
-from modules_0602.util_0602 import *
+from modules_0531.util_0531 import *
 
 
 print("Torch version:", torch.__version__)
@@ -323,7 +323,7 @@ def main():
     load_text_features = True
     load_adapter = True
     search = True 
-    # load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
+    load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
     # lr 
@@ -665,6 +665,7 @@ def main():
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
             new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            # new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             

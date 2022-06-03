@@ -1,5 +1,7 @@
 import torch
 from tqdm import tqdm
+import numpy as np
+import random
 
 '''
 transformer
@@ -35,9 +37,37 @@ def test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights
             top1 = (top1 / n) * 100
     return top1
 
-def search():
-    pass
+'''
+输入:
+    1.一个样本的预测logits
+    2.该样本的标签target
+    3.需要选取多少个原型topK
+输出:
+    包含GT prototype和topK个random prototypes的下标:
+    1.new_target:[batch], topK+1分类的下标.
+    2.origin_target:[batch,topK+1], 每个样本肯定包含其target的topK+1类下标
+'''
+def sapmle_topk1_prototypes(logits:torch.Tensor, targets:torch.Tensor, topK:int):
+    cls_num = logits.shape[1]
+    batch = logits.shape[0]
 
+    origin_target = []
+    new_target = torch.zeros(batch,1).view(-1).to(torch.long)
+    for i, target in enumerate(targets):
+        random_targets = random.sample(range(cls_num),topK+1)
+        if target in random_targets:
+            new_target[i] = random_targets.index(target)
+        else:
+            random_targets[0] = target.cpu().numpy() # tensor->numpy
+        origin_target =  np.append(origin_target, random_targets)
+    
+    origin_target = origin_target.reshape(batch,-1)
+    new_target = new_target.cuda()
+
+    return new_target, origin_target
+
+
+# ---------------------------- metrics ----------------------------
 '''
 测试阶段使用的准确率算法,计算一个batch中top1正确个数
 test_logits:[batch,topK]
