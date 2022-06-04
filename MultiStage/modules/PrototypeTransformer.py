@@ -38,23 +38,21 @@ class ProtoTransformer(nn.Module):
     zeroshot_weights : [batch, proto_num, 1024]
     '''
     def forward(self, x, prototypes, zeroshot_weights, alpha=None,beta=None):
-        if alpha: # search 阶段
+        if alpha != None:
             self.alpha = alpha
             self.beta = beta
-
-        
         in_feature = (prototypes + x.unsqueeze(1) + zeroshot_weights) / 3
         in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
         out_feature = self.SALayers(in_feature).permute(1,0,2) # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
-
-        # out_feature = F.normalize(out_feature, dim=-1)
-        # x = x.unsqueeze(2) # [batch, 1024] -> [batch, 1024, 1]
-        # sim =  (out_feature @ x ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
-        # new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
-        # logits = new_knowledges
-        logits = self.linear(F.relu(out_feature)).squeeze(-1)
+        out_feature = F.normalize(out_feature, dim=-1)
+        sim =  (out_feature @ x.unsqueeze(2) ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
+        new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
+        zero_shot_logits = (100. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
+        transformer_logits = new_knowledges + zero_shot_logits
         
-        return logits
+        score = att_rank(transformer_logits) # s
+        
+        return score
 
     '''
     x : [batch, 1024]
@@ -77,6 +75,17 @@ class ProtoTransformer(nn.Module):
         
     #     return pred
 
+def att_rank(y):
+    exp_y = torch.exp(y)
+    sum = torch.sum(exp_y,dim=-1).unsqueeze(-1)
+    y = exp_y / sum
+    return y
+    
+def one_hot(y, cls_num):
+    one_hot_target = torch.zeros((y.shape[0], cls_num))
+    for i,target in enumerate(y):
+            one_hot_target[i][target] = 1
+    return one_hot_target
     
 if __name__ == '__main__':
     class test:

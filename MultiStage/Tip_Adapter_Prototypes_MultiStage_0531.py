@@ -322,7 +322,7 @@ def main():
     load_test = True
     load_text_features = True
     load_adapter = True
-    # search = True 
+    search = True 
     load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
@@ -341,7 +341,7 @@ def main():
     # refine 
     parser.add_argument('--topK', type=int, default=5)
     parser.add_argument('--refine_epoch', type=int, default=30)
-    parser.add_argument('--refine_lr', type=float, default=0.005)
+    parser.add_argument('--refine_lr', type=float, default=0.01)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
 
@@ -669,6 +669,7 @@ def main():
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             
+            # 3.
             loss = F.cross_entropy(new_logits, new_target)
             loss_value = loss.item()
             correct = accuracy(new_logits, new_target)
@@ -724,7 +725,7 @@ def main():
 
 
 # python /data/luowei/missing_modality/Tip-Adapter-Multi-Stage/MultiStage/Tip_Adapter_Prototypes_MultiStage_0531.py
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
     main()
 

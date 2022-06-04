@@ -1,0 +1,2 @@
+2022-06-03 14:32:15:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=30, refine_lr=0.01, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-03 14:32:23:INFO:1000 classes, 7 templates

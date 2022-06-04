@@ -16,7 +16,9 @@ def test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights
     top1, n = 0., 0.
     if loader == None:
         with torch.no_grad():
+            
             new_logits = transformer(test_features, test_prototypes, test_zs_weights, alpha, beta)
+            
             '''test_topK_targets:[batch,topK],test_labels:[batch],如果new_logits中预测的top1是test_labels,则算预测正确'''
             acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]
             top1 = acc1_num
@@ -30,7 +32,9 @@ def test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights
                 batch_test_features = test_features[i*batch:(i+1)*batch]
                 batch_test_topK_targets = test_topK_targets[i*batch:(i+1)*batch] # [batch, topK] , 表示每个测试样本提取的topK的标签
                 topK_protos, topK_zeroshot_weights = test_prototypes[i*batch:(i+1)*batch], test_zs_weights[i*batch:(i+1)*batch]
+                
                 new_logits = transformer(batch_test_features, topK_protos, topK_zeroshot_weights, alpha, beta)
+                
                 acc1_num = accuracy_test(new_logits, batch_test_topK_targets, batch_target) # new_logits=[batch, proto_num], target=[batch,cls_num]
                 top1 += acc1_num
                 n += batch
@@ -68,6 +72,13 @@ def sapmle_topk1_prototypes(logits:torch.Tensor, targets:torch.Tensor, topK:int)
 
 
 # ---------------------------- metrics ----------------------------
+def one_hot(y, cls_num):
+    one_hot_target = torch.zeros((y.shape[0], cls_num))
+    for i,target in enumerate(y):
+            one_hot_target[i][target] = 1
+    return one_hot_target
+
+
 '''
 测试阶段使用的准确率算法,计算一个batch中top1正确个数
 test_logits:[batch,topK]
