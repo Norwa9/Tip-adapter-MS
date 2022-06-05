@@ -41,18 +41,21 @@ class ProtoTransformer(nn.Module):
         if alpha != None:
             self.alpha = alpha
             self.beta = beta
+            
         in_feature = (prototypes + x.unsqueeze(1) + zeroshot_weights) / 3
         in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
-        out_feature = self.SALayers(in_feature).permute(1,0,2) # [batch, 1, 1024] , 表示每个样本的GT prototype应该加上的偏移量
-        out_feature = F.normalize(out_feature, dim=-1)
-        sim =  (out_feature @ x.unsqueeze(2) ).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1]
+        offset = self.SALayers(in_feature)[0] # [batch,1024] , 表示每个样本的GT prototype应该加上的偏移量
+        out_feature = (x + offset)  # [batch,1024]
+        out_feature = F.normalize(out_feature,dim=-1).unsqueeze(2) # [batch,1024,1]
+        
+        sim =  (prototypes @ out_feature).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
-        zero_shot_logits = (100. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
-        transformer_logits = new_knowledges + zero_shot_logits
+        zero_shot_logits = (1. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
+        logits = new_knowledges + zero_shot_logits
         
-        score = att_rank(transformer_logits) # s
+        # score = att_rank(transformer_logits) # s
         
-        return score
+        return logits
 
     '''
     x : [batch, 1024]

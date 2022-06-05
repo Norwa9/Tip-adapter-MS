@@ -248,7 +248,7 @@ class Tip_Adapter(nn.Module):
         sim =  x @ self.proto.T # [batch, 1024] x [1024, cls_num] = [batch, cls_num]
 
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta
-        zero_shot_logits = 100. * x @ self.zero_shots_weight 
+        zero_shot_logits = 100. * x @ self.zero_shots_weight  # 如果权重等于1.0, 测试acc学不上去
 
         logits = new_knowledges + zero_shot_logits
         
@@ -340,7 +340,7 @@ def main():
     
     # refine 
     parser.add_argument('--topK', type=int, default=5)
-    parser.add_argument('--refine_epoch', type=int, default=30)
+    parser.add_argument('--refine_epoch', type=int, default=10)
     parser.add_argument('--refine_lr', type=float, default=0.01)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
     parser.add_argument('--transformer_beta', type=float, default=1.17)
@@ -543,28 +543,26 @@ def main():
 
             top1, top5, n = 0., 0., 0.
             top2,top3,top4 = 0., 0., 0.
+            topN = 0.
             logits, _ = adapter(test_features, test_labels)
-            acc1,acc2,acc3,acc4,acc5 = accuracy(logits, test_labels, topk=(1,2,3,4,5))
-            top1 += acc1
-            top2 += acc2
-            top3 += acc3
-            top4 += acc4
-            top5 += acc5
+            top1,top2,top3,top4,top5,topN = accuracy(logits, test_labels, topk=(1,2,3,4,5,50))
             n += test_features.size(0)
             top1 = (top1 / n) * 100
             top2 = (top2 / n) * 100
             top3 = (top3 / n) * 100
             top4 = (top4 / n) * 100
             top5 = (top5 / n) * 100
+            topN = (topN / n) * 100
             logger.info(f"Testing Top-1 Accuracy: {top1:.2f}")
             logger.info(f"Testing Top-2 Accuracy: {top2:.2f}")
             logger.info(f"Testing Top-3 Accuracy: {top3:.2f}")
             logger.info(f"Testing Top-4 Accuracy: {top4:.2f}")
             logger.info(f"Testing Top-5 Accuracy: {top5:.2f}")
+            logger.info(f"Testing Top-50 Accuracy: {topN:.2f}")
 
             if top1 > best_top1:
-                logger.info(f'Stage1: Saving best model..')
-                torch.save(adapter.state_dict(), state_dict_save_path)
+                # logger.info(f'Stage1: Saving best model..')
+                # torch.save(adapter.state_dict(), state_dict_save_path)
 
                 best_top1 = top1
                 best_top2 = top2

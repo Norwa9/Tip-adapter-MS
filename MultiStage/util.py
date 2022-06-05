@@ -249,6 +249,10 @@ def get_topK_plusone_protos(proto_indices, orgin_protos:torch.Tensor, orgin_zero
 
     return topK_plusone_protos, topK_plusone_zeroshot_weights
 
+'''
+获取topK的prototype和zeros weight
+测试时用
+'''
 def get_topK_ProtosAndZeroshotWeight(logits:torch.Tensor, orgin_protos:torch.Tensor, orgin_zeroshot_weights:torch.Tensor,topK:int):
     indices = logits.topk(topK)[1] # [batch,topK]
     cls_num = orgin_protos.shape[0]

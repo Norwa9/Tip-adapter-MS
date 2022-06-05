@@ -238,8 +238,8 @@ def main():
     test_features_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_f_test.pt"
     test_targets_path = "/data/luowei/missing_modality/Tip-Adapter-Multi-Stage/features/imagenet_t_test.pt"
 
-    # load_train = False
-    # load_test = False
+    load_train = False
+    load_test = False
 
     load_train = True
     load_test = True
@@ -247,7 +247,7 @@ def main():
     search = False
 
     # ~~~~~~~~~~~~~~~~~~
-    k_shot = 8
+    k_shot = 16
     # ~~~~~~~~~~~~~~~~~~
 
     parser = argparse.ArgumentParser()
@@ -380,34 +380,40 @@ def main():
 
     # CLIP Zero-shot
     top1, top5, n = 0., 0., 0.
+    topN = 0.
     logits = 100. * test_features @ zeroshot_weights
-    acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
-    top1 += acc1
-    top5 += acc5
+    top1, top5,topN = accuracy(logits, test_labels, topk=(1, 5,50 ))
     n += test_features.size(0)
     top1 = (top1 / n) * 100
     top5 = (top5 / n) * 100
+    topN = (topN / n) * 100
     print()
     print(f"CLIP Top-1 accuracy: {top1:.2f}, with zero-shot learning")
+    print(f"CLIP Top-5 accuracy: {top5:.2f}, with zero-shot learning")
+    print(f"CLIP Top-10 accuracy: {topN:.2f}, with zero-shot learning")
 
 
     # Tip-Adapter
     alpha = args.alpha
     beta = args.beta
     top1, top5, n = 0., 0., 0.
+    topN = 0.
     new_knowledge = test_features @ train_images_features_agg
-    new_logits = ((-1) * (alpha - alpha * new_knowledge.to(torch.float16))).exp() @ train_images_targets
+    new_logits = ((-1) * (alpha - alpha * new_knowledge)).exp() @ train_images_targets.half()
     logits = 100. * test_features @ zeroshot_weights
     logits = logits + new_logits * beta
-    acc1, acc5 = accuracy(logits, test_labels, topk=(1, 5))
-    top1 += acc1
-    top5 += acc5
+    top1, top5, topN = accuracy(logits, test_labels, topk=(1, 5, 50))
     n += test_features.size(0)
     top1 = (top1 / n) * 100
     top5 = (top5 / n) * 100
+    topN = (topN / n) * 100
     print()
     print(f"AdapterV2 Top-1 accuracy: {top1:.2f}, without training")
-    print()
+    print(f"AdapterV2 Top-5 accuracy: {top5:.2f}, without training")
+    print(f"AdapterV2 Top-50 accuracy: {topN:.2f}, without training")
+
+
+    return
 
     if search:
 

@@ -1,0 +1,56 @@
+2022-06-05 11:35:35:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=30, refine_lr=0.01, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-05 11:35:44:INFO:1000 classes, 7 templates
+2022-06-05 11:35:59:INFO:Load data finished.
+2022-06-05 11:36:00:INFO:Loading saved text features.
+2022-06-05 11:36:00:INFO:Loading training image features
+2022-06-05 11:36:00:INFO:start saving testing image features
+2022-06-05 11:36:00:INFO:Start fintuning adapter parameters..
+2022-06-05 11:36:00:INFO:Train time: 1 / 20
+2022-06-05 11:36:23:INFO:LR: 0.014908, Acc: 0.4459 (7135.0/16000), Loss: 9.4742
+2022-06-05 11:36:23:INFO:Testing Top-1 Accuracy: 51.22
+2022-06-05 11:36:23:INFO:Testing Top-2 Accuracy: 65.76
+2022-06-05 11:36:23:INFO:Testing Top-3 Accuracy: 73.08
+2022-06-05 11:36:23:INFO:Testing Top-4 Accuracy: 77.80
+2022-06-05 11:36:23:INFO:Testing Top-5 Accuracy: 80.97
+2022-06-05 11:36:23:INFO:Testing Top-50 Accuracy: 97.77
+2022-06-05 11:36:23:INFO:Train time: 2 / 20
+2022-06-05 11:36:58:INFO:LR: 0.014633, Acc: 0.7424 (11879.0/16000), Loss: 6.9593
+2022-06-05 11:36:58:INFO:Testing Top-1 Accuracy: 54.34
+2022-06-05 11:36:58:INFO:Testing Top-2 Accuracy: 68.55
+2022-06-05 11:36:58:INFO:Testing Top-3 Accuracy: 75.65
+2022-06-05 11:36:58:INFO:Testing Top-4 Accuracy: 79.91
+2022-06-05 11:36:58:INFO:Testing Top-5 Accuracy: 82.93
+2022-06-05 11:36:58:INFO:Testing Top-50 Accuracy: 97.78
+2022-06-05 11:36:58:INFO:Train time: 3 / 20
+2022-06-05 11:37:21:INFO:LR: 0.014183, Acc: 0.8306 (13289.0/16000), Loss: 6.0627
+2022-06-05 11:37:21:INFO:Testing Top-1 Accuracy: 54.00
+2022-06-05 11:37:21:INFO:Testing Top-2 Accuracy: 68.56
+2022-06-05 11:37:21:INFO:Testing Top-3 Accuracy: 75.48
+2022-06-05 11:37:21:INFO:Testing Top-4 Accuracy: 79.78
+2022-06-05 11:37:21:INFO:Testing Top-5 Accuracy: 82.55
+2022-06-05 11:37:21:INFO:Testing Top-50 Accuracy: 97.72
+2022-06-05 11:37:21:INFO:Train time: 4 / 20
+2022-06-05 11:37:43:INFO:LR: 0.013568, Acc: 0.8622 (13795.0/16000), Loss: 5.1493
+2022-06-05 11:37:43:INFO:Testing Top-1 Accuracy: 54.03
+2022-06-05 11:37:43:INFO:Testing Top-2 Accuracy: 68.17
+2022-06-05 11:37:43:INFO:Testing Top-3 Accuracy: 75.22
+2022-06-05 11:37:43:INFO:Testing Top-4 Accuracy: 79.48
+2022-06-05 11:37:43:INFO:Testing Top-5 Accuracy: 82.47
+2022-06-05 11:37:43:INFO:Testing Top-50 Accuracy: 97.69
+2022-06-05 11:37:43:INFO:Train time: 5 / 20
+2022-06-05 11:38:06:INFO:LR: 0.012803, Acc: 0.8776 (14041.0/16000), Loss: 3.8819
+2022-06-05 11:38:06:INFO:Testing Top-1 Accuracy: 55.05
+2022-06-05 11:38:06:INFO:Testing Top-2 Accuracy: 69.08
+2022-06-05 11:38:06:INFO:Testing Top-3 Accuracy: 76.09
+2022-06-05 11:38:06:INFO:Testing Top-4 Accuracy: 80.29
+2022-06-05 11:38:06:INFO:Testing Top-5 Accuracy: 82.89
+2022-06-05 11:38:06:INFO:Testing Top-50 Accuracy: 97.74
+2022-06-05 11:38:06:INFO:Train time: 6 / 20
+2022-06-05 11:38:28:INFO:LR: 0.011908, Acc: 0.8658 (13852.0/16000), Loss: nan
+2022-06-05 11:38:28:INFO:Testing Top-1 Accuracy: 0.10
+2022-06-05 11:38:28:INFO:Testing Top-2 Accuracy: 0.20
+2022-06-05 11:38:28:INFO:Testing Top-3 Accuracy: 0.30
+2022-06-05 11:38:28:INFO:Testing Top-4 Accuracy: 0.40
+2022-06-05 11:38:28:INFO:Testing Top-5 Accuracy: 0.50
+2022-06-05 11:38:28:INFO:Testing Top-50 Accuracy: 5.00
+2022-06-05 11:38:28:INFO:Train time: 7 / 20
