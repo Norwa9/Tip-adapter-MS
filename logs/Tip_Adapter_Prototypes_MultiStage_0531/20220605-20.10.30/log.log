@@ -26,3 +26,81 @@
 2022-06-05 12:13:30:INFO:Refine Top-1 Accuracy: 65.57
 2022-06-05 12:13:30:INFO:Stage2: Saving best model..
 2022-06-05 12:13:30:INFO:Refine time: 6 / 10
+2022-06-05 12:13:57:INFO:LR: 0.003455, Acc: 0.9958 (15933.0/16000), Loss: 0.0439
+2022-06-05 12:13:59:INFO:Refine Top-1 Accuracy: 65.62
+2022-06-05 12:13:59:INFO:Stage2: Saving best model..
+2022-06-05 12:13:59:INFO:Refine time: 7 / 10
+2022-06-05 12:14:26:INFO:LR: 0.002061, Acc: 0.9950 (15920.0/16000), Loss: 0.0484
+2022-06-05 12:14:28:INFO:Refine Top-1 Accuracy: 65.62
+2022-06-05 12:14:28:INFO:Refine time: 8 / 10
+2022-06-05 12:14:55:INFO:LR: 0.000955, Acc: 0.9949 (15918.0/16000), Loss: 0.0498
+2022-06-05 12:14:58:INFO:Refine Top-1 Accuracy: 65.62
+2022-06-05 12:14:58:INFO:Refine time: 9 / 10
+2022-06-05 12:15:29:INFO:LR: 0.000245, Acc: 0.9955 (15928.0/16000), Loss: 0.0413
+2022-06-05 12:15:31:INFO:Refine Top-1 Accuracy: 65.62
+2022-06-05 12:15:31:INFO:Refine time: 10 / 10
+2022-06-05 12:16:01:INFO:LR: 0.000000, Acc: 0.9946 (15913.0/16000), Loss: 0.0471
+2022-06-05 12:16:04:INFO:Refine Top-1 Accuracy: 65.62
+2022-06-05 12:16:04:INFO:Stage2: Best Testing Top 1 Accuracy: 65.62, at Epoch: 6
+2022-06-05 12:16:04:INFO:Begin to search
+2022-06-05 12:16:04:INFO:alpha:1.0, beta:0.100
+2022-06-05 12:16:06:INFO:New best setting, alpha: 1.00, beta: 0.10; Top-1 acc: 65.62
+2022-06-05 12:16:06:INFO:alpha:1.0, beta:0.135
+2022-06-05 12:16:09:INFO:alpha:1.0, beta:0.169
+2022-06-05 12:16:11:INFO:alpha:1.0, beta:0.204
+2022-06-05 12:16:13:INFO:alpha:1.0, beta:0.238
+2022-06-05 12:16:16:INFO:alpha:1.0, beta:0.272
+2022-06-05 12:16:18:INFO:alpha:1.0, beta:0.307
+2022-06-05 12:16:21:INFO:alpha:1.0, beta:0.342
+2022-06-05 12:16:23:INFO:alpha:1.0, beta:0.376
+2022-06-05 12:16:26:INFO:alpha:1.0, beta:0.410
+2022-06-05 12:16:28:INFO:alpha:1.0, beta:0.445
+2022-06-05 12:16:30:INFO:alpha:1.0, beta:0.480
+2022-06-05 12:16:33:INFO:alpha:1.0, beta:0.514
+2022-06-05 12:16:35:INFO:alpha:1.0, beta:0.548
+2022-06-05 12:16:38:INFO:alpha:1.0, beta:0.583
+2022-06-05 12:16:40:INFO:alpha:1.0, beta:0.617
+2022-06-05 12:16:43:INFO:alpha:1.0, beta:0.652
+2022-06-05 12:16:46:INFO:alpha:1.0, beta:0.686
+2022-06-05 12:17:07:INFO:alpha:1.0, beta:0.721
+2022-06-05 12:17:09:INFO:alpha:1.0, beta:0.755
+2022-06-05 12:17:12:INFO:alpha:1.0, beta:0.790
+2022-06-05 12:17:15:INFO:alpha:1.0, beta:0.825
+2022-06-05 12:17:23:INFO:alpha:1.0, beta:0.859
+2022-06-05 12:17:25:INFO:alpha:1.0, beta:0.894
+2022-06-05 12:17:27:INFO:alpha:1.0, beta:0.928
+2022-06-05 12:17:29:INFO:alpha:1.0, beta:0.963
+2022-06-05 12:17:31:INFO:alpha:1.0, beta:0.997
+2022-06-05 12:17:33:INFO:alpha:1.0, beta:1.032
+2022-06-05 12:17:35:INFO:alpha:1.0, beta:1.066
+2022-06-05 12:17:37:INFO:alpha:1.0, beta:1.101
+2022-06-05 12:17:39:INFO:alpha:1.0, beta:1.135
+2022-06-05 12:17:41:INFO:alpha:1.0, beta:1.170
+2022-06-05 12:17:43:INFO:alpha:1.0, beta:1.204
+2022-06-05 12:17:45:INFO:alpha:1.0, beta:1.239
+2022-06-05 12:17:47:INFO:alpha:1.0, beta:1.273
+2022-06-05 12:17:49:INFO:alpha:1.0, beta:1.308
+2022-06-05 12:17:51:INFO:alpha:1.0, beta:1.342
+2022-06-05 12:17:53:INFO:alpha:1.0, beta:1.377
+2022-06-05 12:17:55:INFO:alpha:1.0, beta:1.411
+2022-06-05 12:17:57:INFO:alpha:1.0, beta:1.446
+2022-06-05 12:18:00:INFO:alpha:1.0, beta:1.480
+2022-06-05 12:18:02:INFO:alpha:1.0, beta:1.515
+2022-06-05 12:18:05:INFO:alpha:1.0, beta:1.549
+2022-06-05 12:18:07:INFO:alpha:1.0, beta:1.584
+2022-06-05 12:18:10:INFO:alpha:1.0, beta:1.618
+2022-06-05 12:18:13:INFO:alpha:1.0, beta:1.653
+2022-06-05 12:18:15:INFO:alpha:1.0, beta:1.687
+2022-06-05 12:18:17:INFO:alpha:1.0, beta:1.722
+2022-06-05 12:18:19:INFO:alpha:1.0, beta:1.756
+2022-06-05 12:18:21:INFO:alpha:1.0, beta:1.791
+2022-06-05 12:18:23:INFO:alpha:1.0, beta:1.825
+2022-06-05 12:18:25:INFO:alpha:1.0, beta:1.860
+2022-06-05 12:18:27:INFO:alpha:1.0, beta:1.894
+2022-06-05 12:18:29:INFO:alpha:1.0, beta:1.929
+2022-06-05 12:18:31:INFO:alpha:1.0, beta:1.963
+2022-06-05 12:18:33:INFO:alpha:1.0, beta:1.998
+2022-06-05 12:18:35:INFO:alpha:1.0, beta:2.032
+2022-06-05 12:18:37:INFO:alpha:1.0, beta:2.067
+2022-06-05 12:18:39:INFO:alpha:1.0, beta:2.101
+2022-06-05 12:18:41:INFO:alpha:1.0, beta:2.136

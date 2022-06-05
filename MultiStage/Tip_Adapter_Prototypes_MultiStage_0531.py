@@ -337,9 +337,10 @@ def main():
     # epoch
     parser.add_argument('--train_epoch', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument('--test_batch_size', type=int, default=512)
     
     # refine 
-    parser.add_argument('--topK', type=int, default=5)
+    parser.add_argument('--topK', type=int, default=50)
     parser.add_argument('--refine_epoch', type=int, default=10)
     parser.add_argument('--refine_lr', type=float, default=0.01)
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
@@ -387,7 +388,7 @@ def main():
     logger.info(f"{len(imagenet_classes)} classes, {len(imagenet_templates)} templates")
 
     images = torchvision.datasets.ImageNet(data_path, split='val', transform=preprocess)
-    loader = torch.utils.data.DataLoader(images, batch_size=1024, num_workers=8, shuffle=False) # 50000张图片作为测试集
+    loader = torch.utils.data.DataLoader(images, batch_size=args.test_batch_size, num_workers=8, shuffle=False) # 50000张图片作为测试集
 
     train_tranform = transforms.Compose([
         transforms.RandomResizedCrop(size=224, scale=(0.5, 1), interpolation=transforms.InterpolationMode.BICUBIC),
@@ -662,8 +663,8 @@ def main():
             # 提取包含目标prototype的topK+1个prototypes的下标
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
-            # new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
+            new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            # new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             
@@ -688,7 +689,8 @@ def main():
         # eval
         transformer.eval()
 
-        top1 = test_stage2(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
+        # top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
+        top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
 
         logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")
         if top1 > best_top1:
@@ -712,7 +714,8 @@ def main():
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
-                top1 = test_stage2(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
+                # top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
+                top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
                 if top1 > best_top1:
                     logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}')
                     torch.save(transformer.state_dict(), state_dict_save_path_transforer)

@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import random
-
+from util import *
 '''
 transformer
 loader, if == None,表示一次性测试完整个测试集(可能会爆显存,因此可以输入loader分批测试)
@@ -12,7 +12,7 @@ test_zs_weights=[50000,topK,1024]
 test_topK_targets=[50000,topK]
 test_labels=[500000]
 '''
-def test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels,alpha=None,beta=None):
+def test_stage2_offline(transformer,loader,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels,alpha=None,beta=None):
     top1, n = 0., 0.
     if loader == None:
         with torch.no_grad():
@@ -41,6 +41,30 @@ def test_stage2(transformer,loader,test_features,test_prototypes,test_zs_weights
             top1 = (top1 / n) * 100
     return top1
 
+'''
+online:
+从数据集的图片过一遍第一阶段的adapter,然后提取topK个prototypes和zs weight 进行第二阶段
+与offline的区别在于prototypes和zs weight是否有存储准备好
+'''
+def test_stage2_online(args, transformer,adapter, model, test_loader, alpha=None,beta=None):
+    correct_all,n = 0,0
+    for i, (images, target) in enumerate(tqdm(test_loader)):
+        images = images.cuda()
+        target = target.cuda()
+        with torch.no_grad():
+            image_features = model.encode_image(images)
+            image_features /= image_features.norm(dim=-1, keepdim=True) # [batch, image_dim]
+
+        logits, _ = adapter(image_features, target)
+        topK_protos, topK_zeroshot_weights = get_topK_ProtosAndZeroshotWeight(logits, adapter.proto, adapter.zero_shots_weight, args.topK)
+        new_logits = transformer(image_features,topK_protos, topK_zeroshot_weights, alpha, beta)
+        new_target = logits.topk(args.topK)[1]
+        
+        correct = accuracy_test(new_logits, new_target, target)
+        correct_all += correct[0]
+        n += len(new_logits)
+    top1  = (correct / n) * 100
+    return top1
 '''
 输入:
     1.一个样本的预测logits
