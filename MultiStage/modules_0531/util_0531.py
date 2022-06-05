@@ -61,7 +61,7 @@ def test_stage2_online(args, transformer,adapter, model, test_loader, alpha=None
         new_target = logits.topk(args.topK)[1]
         
         correct = accuracy_test(new_logits, new_target, target)
-        correct_all += correct[0]
+        correct_all += correct
         n += len(new_logits)
     top1  = (correct / n) * 100
     return top1

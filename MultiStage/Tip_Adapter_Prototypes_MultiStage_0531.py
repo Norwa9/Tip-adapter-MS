@@ -326,31 +326,36 @@ def main():
     load_testing_prototypes = True # 每次训练得到新的adapter就需要重新保存一次testing_prototypes
     
     parser = argparse.ArgumentParser()
-    # lr 
-    parser.add_argument('--lr', type=float, default=0.015, help='lr')
     
+    # data prepare
+    parser.add_argument('--augment_epoch', type=int, default=10)
+
     # alpha, beta
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--beta', type=float, default=1.17)
     parser.add_argument('--temperature', type=float, default=0.05)
+
+    # few shot
+    parser.add_argument('--k_shot', type=int, default=16)
     
+    # lr 
+    parser.add_argument('--lr', type=float, default=0.015, help='lr')
+    parser.add_argument('--refine_lr', type=float, default=0.01)
+
     # epoch
     parser.add_argument('--train_epoch', type=int, default=20)
-    parser.add_argument('--batch_size', type=int, default=512)
-    parser.add_argument('--test_batch_size', type=int, default=512)
-    
-    # refine 
-    parser.add_argument('--topK', type=int, default=50)
     parser.add_argument('--refine_epoch', type=int, default=10)
-    parser.add_argument('--refine_lr', type=float, default=0.01)
-    parser.add_argument('--transformer_alpha', type=float, default=1.0)
-    parser.add_argument('--transformer_beta', type=float, default=1.17)
 
-    # other
-    parser.add_argument('--augment_epoch', type=int, default=10)
-    parser.add_argument('--k_shot', type=int, default=16)
+    # batch size
+    parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument('--test_batch_size', type=int, default=1024)
+
+    # topK
+    parser.add_argument('--topK', type=int, default=50)
 
     # ProtoTransofrmer
+    parser.add_argument('--transformer_alpha', type=float, default=1.0)
+    parser.add_argument('--transformer_beta', type=float, default=1.17)
     parser.add_argument('--embed_dim', type=int, default=1024)
     parser.add_argument('--num_heads', type=int, default=1)
     parser.add_argument('--layers', type=int, default=1)
