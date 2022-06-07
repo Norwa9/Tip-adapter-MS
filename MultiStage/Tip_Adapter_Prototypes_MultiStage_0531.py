@@ -344,14 +344,14 @@ def main():
 
     # epoch
     parser.add_argument('--train_epoch', type=int, default=20)
-    parser.add_argument('--refine_epoch', type=int, default=10)
+    parser.add_argument('--refine_epoch', type=int, default=20)
 
     # batch size
     parser.add_argument('--batch_size', type=int, default=512)
-    parser.add_argument('--test_batch_size', type=int, default=1024)
+    parser.add_argument('--test_batch_size', type=int, default=512)
 
     # topK
-    parser.add_argument('--topK', type=int, default=50)
+    parser.add_argument('--topK', type=int, default=5)
 
     # ProtoTransofrmer
     parser.add_argument('--transformer_alpha', type=float, default=1.0)
@@ -567,8 +567,8 @@ def main():
             logger.info(f"Testing Top-50 Accuracy: {topN:.2f}")
 
             if top1 > best_top1:
-                # logger.info(f'Stage1: Saving best model..')
-                # torch.save(adapter.state_dict(), state_dict_save_path)
+                logger.info(f'Stage1: Saving best model..')
+                torch.save(adapter.state_dict(), state_dict_save_path)
 
                 best_top1 = top1
                 best_top2 = top2
@@ -581,7 +581,7 @@ def main():
         # ------------------------------------------ Stage1: Search ------------------------------------------
         logger.info("Begin to search adapter's best alpha & beta")
         adapter.load_state_dict(torch.load(state_dict_save_path))
-        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(4)] # [1, 2] 
+        alpha_list = [i * (6.0 - 1.0) / 20 + 1 for i in range(20)] # [1, 6] 
         beta_list = [i * (7 - 0.1) / 200 + 0.1 for i in range(200)] # [0.1, 7]
         best_top1 = 0
         adapter.eval()
@@ -668,8 +668,8 @@ def main():
             # 提取包含目标prototype的topK+1个prototypes的下标
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
-            new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            # new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
+            # new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
+            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
             

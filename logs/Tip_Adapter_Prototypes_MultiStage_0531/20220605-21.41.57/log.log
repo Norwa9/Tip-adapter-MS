@@ -1,0 +1,317 @@
+2022-06-05 13:41:57:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=10, refine_lr=0.01, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, test_batch_size=1024, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-05 13:42:05:INFO:1000 classes, 7 templates
+2022-06-05 13:42:19:INFO:Load data finished.
+2022-06-05 13:42:20:INFO:Loading saved text features.
+2022-06-05 13:42:20:INFO:Loading training image features
+2022-06-05 13:42:20:INFO:start saving testing image features
+2022-06-05 13:42:20:INFO:Loading fintuned adapter parameters..
+2022-06-05 13:42:20:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-05 13:42:22:INFO:Refine time: 1 / 10
+2022-06-05 13:42:54:INFO:LR: 0.009755, Acc: 0.8446 (13513.0/16000), Loss: 0.5512
+2022-06-05 13:42:57:INFO:Refine Top-1 Accuracy: 65.45
+2022-06-05 13:42:57:INFO:Stage2: Saving best model..
+2022-06-05 13:42:57:INFO:Refine time: 2 / 10
+2022-06-05 13:43:27:INFO:LR: 0.009045, Acc: 0.8552 (13683.0/16000), Loss: 0.5035
+2022-06-05 13:43:29:INFO:Refine Top-1 Accuracy: 65.50
+2022-06-05 13:43:29:INFO:Stage2: Saving best model..
+2022-06-05 13:43:29:INFO:Refine time: 3 / 10
+2022-06-05 13:43:56:INFO:LR: 0.007939, Acc: 0.8603 (13765.0/16000), Loss: 0.4792
+2022-06-05 13:43:57:INFO:Refine Top-1 Accuracy: 65.50
+2022-06-05 13:43:57:INFO:Refine time: 4 / 10
+2022-06-05 13:44:24:INFO:LR: 0.006545, Acc: 0.8601 (13762.0/16000), Loss: 0.4913
+2022-06-05 13:44:26:INFO:Refine Top-1 Accuracy: 65.51
+2022-06-05 13:44:26:INFO:Stage2: Saving best model..
+2022-06-05 13:44:26:INFO:Refine time: 5 / 10
+2022-06-05 13:44:57:INFO:LR: 0.005000, Acc: 0.8612 (13779.0/16000), Loss: 0.4770
+2022-06-05 13:45:00:INFO:Refine Top-1 Accuracy: 65.51
+2022-06-05 13:45:00:INFO:Refine time: 6 / 10
+2022-06-05 13:45:31:INFO:LR: 0.003455, Acc: 0.8636 (13818.0/16000), Loss: 0.4767
+2022-06-05 13:45:33:INFO:Refine Top-1 Accuracy: 65.52
+2022-06-05 13:45:33:INFO:Stage2: Saving best model..
+2022-06-05 13:45:33:INFO:Refine time: 7 / 10
+2022-06-05 13:46:00:INFO:LR: 0.002061, Acc: 0.8640 (13824.0/16000), Loss: 0.4710
+2022-06-05 13:46:02:INFO:Refine Top-1 Accuracy: 65.53
+2022-06-05 13:46:02:INFO:Stage2: Saving best model..
+2022-06-05 13:46:02:INFO:Refine time: 8 / 10
+2022-06-05 13:46:28:INFO:LR: 0.000955, Acc: 0.8623 (13797.0/16000), Loss: 0.4819
+2022-06-05 13:46:31:INFO:Refine Top-1 Accuracy: 65.54
+2022-06-05 13:46:31:INFO:Stage2: Saving best model..
+2022-06-05 13:46:31:INFO:Refine time: 9 / 10
+2022-06-05 13:46:58:INFO:LR: 0.000245, Acc: 0.8638 (13820.0/16000), Loss: 0.4737
+2022-06-05 13:47:00:INFO:Refine Top-1 Accuracy: 65.53
+2022-06-05 13:47:00:INFO:Refine time: 10 / 10
+2022-06-05 13:47:26:INFO:LR: 0.000000, Acc: 0.8620 (13792.0/16000), Loss: 0.4817
+2022-06-05 13:47:28:INFO:Refine Top-1 Accuracy: 65.53
+2022-06-05 13:47:28:INFO:Stage2: Best Testing Top 1 Accuracy: 65.54, at Epoch: 8
+2022-06-05 13:47:28:INFO:Begin to search
+2022-06-05 13:47:28:INFO:alpha:1.0, beta:0.100
+2022-06-05 13:47:30:INFO:New best setting, alpha: 1.00, beta: 0.10; Top-1 acc: 61.45
+2022-06-05 13:47:30:INFO:alpha:1.0, beta:0.135
+2022-06-05 13:47:32:INFO:New best setting, alpha: 1.00, beta: 0.13; Top-1 acc: 61.78
+2022-06-05 13:47:32:INFO:alpha:1.0, beta:0.169
+2022-06-05 13:47:34:INFO:New best setting, alpha: 1.00, beta: 0.17; Top-1 acc: 62.10
+2022-06-05 13:47:34:INFO:alpha:1.0, beta:0.204
+2022-06-05 13:47:36:INFO:New best setting, alpha: 1.00, beta: 0.20; Top-1 acc: 62.39
+2022-06-05 13:47:36:INFO:alpha:1.0, beta:0.238
+2022-06-05 13:47:37:INFO:New best setting, alpha: 1.00, beta: 0.24; Top-1 acc: 62.62
+2022-06-05 13:47:38:INFO:alpha:1.0, beta:0.272
+2022-06-05 13:47:39:INFO:New best setting, alpha: 1.00, beta: 0.27; Top-1 acc: 62.92
+2022-06-05 13:47:40:INFO:alpha:1.0, beta:0.307
+2022-06-05 13:47:41:INFO:New best setting, alpha: 1.00, beta: 0.31; Top-1 acc: 63.11
+2022-06-05 13:47:41:INFO:alpha:1.0, beta:0.342
+2022-06-05 13:47:43:INFO:New best setting, alpha: 1.00, beta: 0.34; Top-1 acc: 63.31
+2022-06-05 13:47:43:INFO:alpha:1.0, beta:0.376
+2022-06-05 13:47:45:INFO:New best setting, alpha: 1.00, beta: 0.38; Top-1 acc: 63.52
+2022-06-05 13:47:45:INFO:alpha:1.0, beta:0.410
+2022-06-05 13:47:47:INFO:New best setting, alpha: 1.00, beta: 0.41; Top-1 acc: 63.67
+2022-06-05 13:47:47:INFO:alpha:1.0, beta:0.445
+2022-06-05 13:47:49:INFO:New best setting, alpha: 1.00, beta: 0.44; Top-1 acc: 63.83
+2022-06-05 13:47:49:INFO:alpha:1.0, beta:0.480
+2022-06-05 13:47:51:INFO:New best setting, alpha: 1.00, beta: 0.48; Top-1 acc: 64.03
+2022-06-05 13:47:51:INFO:alpha:1.0, beta:0.514
+2022-06-05 13:47:53:INFO:New best setting, alpha: 1.00, beta: 0.51; Top-1 acc: 64.20
+2022-06-05 13:47:53:INFO:alpha:1.0, beta:0.548
+2022-06-05 13:47:55:INFO:New best setting, alpha: 1.00, beta: 0.55; Top-1 acc: 64.31
+2022-06-05 13:47:55:INFO:alpha:1.0, beta:0.583
+2022-06-05 13:47:57:INFO:New best setting, alpha: 1.00, beta: 0.58; Top-1 acc: 64.46
+2022-06-05 13:47:58:INFO:alpha:1.0, beta:0.617
+2022-06-05 13:48:00:INFO:New best setting, alpha: 1.00, beta: 0.62; Top-1 acc: 64.57
+2022-06-05 13:48:00:INFO:alpha:1.0, beta:0.652
+2022-06-05 13:48:02:INFO:New best setting, alpha: 1.00, beta: 0.65; Top-1 acc: 64.69
+2022-06-05 13:48:02:INFO:alpha:1.0, beta:0.686
+2022-06-05 13:48:05:INFO:New best setting, alpha: 1.00, beta: 0.69; Top-1 acc: 64.77
+2022-06-05 13:48:05:INFO:alpha:1.0, beta:0.721
+2022-06-05 13:48:07:INFO:New best setting, alpha: 1.00, beta: 0.72; Top-1 acc: 64.87
+2022-06-05 13:48:07:INFO:alpha:1.0, beta:0.755
+2022-06-05 13:48:10:INFO:New best setting, alpha: 1.00, beta: 0.76; Top-1 acc: 64.95
+2022-06-05 13:48:10:INFO:alpha:1.0, beta:0.790
+2022-06-05 13:48:12:INFO:New best setting, alpha: 1.00, beta: 0.79; Top-1 acc: 65.02
+2022-06-05 13:48:12:INFO:alpha:1.0, beta:0.825
+2022-06-05 13:48:14:INFO:New best setting, alpha: 1.00, beta: 0.82; Top-1 acc: 65.10
+2022-06-05 13:48:14:INFO:alpha:1.0, beta:0.859
+2022-06-05 13:48:15:INFO:New best setting, alpha: 1.00, beta: 0.86; Top-1 acc: 65.17
+2022-06-05 13:48:16:INFO:alpha:1.0, beta:0.894
+2022-06-05 13:48:17:INFO:New best setting, alpha: 1.00, beta: 0.89; Top-1 acc: 65.21
+2022-06-05 13:48:17:INFO:alpha:1.0, beta:0.928
+2022-06-05 13:48:19:INFO:New best setting, alpha: 1.00, beta: 0.93; Top-1 acc: 65.23
+2022-06-05 13:48:19:INFO:alpha:1.0, beta:0.963
+2022-06-05 13:48:21:INFO:New best setting, alpha: 1.00, beta: 0.96; Top-1 acc: 65.31
+2022-06-05 13:48:21:INFO:alpha:1.0, beta:0.997
+2022-06-05 13:48:23:INFO:New best setting, alpha: 1.00, beta: 1.00; Top-1 acc: 65.33
+2022-06-05 13:48:23:INFO:alpha:1.0, beta:1.032
+2022-06-05 13:48:25:INFO:New best setting, alpha: 1.00, beta: 1.03; Top-1 acc: 65.38
+2022-06-05 13:48:25:INFO:alpha:1.0, beta:1.066
+2022-06-05 13:48:27:INFO:New best setting, alpha: 1.00, beta: 1.07; Top-1 acc: 65.42
+2022-06-05 13:48:27:INFO:alpha:1.0, beta:1.101
+2022-06-05 13:48:29:INFO:New best setting, alpha: 1.00, beta: 1.10; Top-1 acc: 65.52
+2022-06-05 13:48:29:INFO:alpha:1.0, beta:1.135
+2022-06-05 13:48:30:INFO:alpha:1.0, beta:1.170
+2022-06-05 13:48:32:INFO:New best setting, alpha: 1.00, beta: 1.17; Top-1 acc: 65.54
+2022-06-05 13:48:32:INFO:alpha:1.0, beta:1.204
+2022-06-05 13:48:34:INFO:alpha:1.0, beta:1.239
+2022-06-05 13:48:36:INFO:alpha:1.0, beta:1.273
+2022-06-05 13:48:38:INFO:New best setting, alpha: 1.00, beta: 1.27; Top-1 acc: 65.55
+2022-06-05 13:48:38:INFO:alpha:1.0, beta:1.308
+2022-06-05 13:48:40:INFO:alpha:1.0, beta:1.342
+2022-06-05 13:48:42:INFO:alpha:1.0, beta:1.377
+2022-06-05 13:48:43:INFO:New best setting, alpha: 1.00, beta: 1.38; Top-1 acc: 65.56
+2022-06-05 13:48:44:INFO:alpha:1.0, beta:1.411
+2022-06-05 13:48:45:INFO:New best setting, alpha: 1.00, beta: 1.41; Top-1 acc: 65.56
+2022-06-05 13:48:46:INFO:alpha:1.0, beta:1.446
+2022-06-05 13:48:47:INFO:alpha:1.0, beta:1.480
+2022-06-05 13:48:49:INFO:alpha:1.0, beta:1.515
+2022-06-05 13:48:51:INFO:alpha:1.0, beta:1.549
+2022-06-05 13:48:53:INFO:alpha:1.0, beta:1.584
+2022-06-05 13:48:55:INFO:alpha:1.0, beta:1.618
+2022-06-05 13:48:57:INFO:alpha:1.0, beta:1.653
+2022-06-05 13:48:59:INFO:alpha:1.0, beta:1.687
+2022-06-05 13:49:01:INFO:alpha:1.0, beta:1.722
+2022-06-05 13:49:03:INFO:alpha:1.0, beta:1.756
+2022-06-05 13:49:05:INFO:alpha:1.0, beta:1.791
+2022-06-05 13:49:07:INFO:alpha:1.0, beta:1.825
+2022-06-05 13:49:09:INFO:alpha:1.0, beta:1.860
+2022-06-05 13:49:11:INFO:alpha:1.0, beta:1.894
+2022-06-05 13:49:13:INFO:alpha:1.0, beta:1.929
+2022-06-05 13:49:15:INFO:alpha:1.0, beta:1.963
+2022-06-05 13:49:16:INFO:alpha:1.0, beta:1.998
+2022-06-05 13:49:18:INFO:alpha:1.0, beta:2.032
+2022-06-05 13:49:20:INFO:alpha:1.0, beta:2.067
+2022-06-05 13:49:21:INFO:alpha:1.0, beta:2.101
+2022-06-05 13:49:23:INFO:alpha:1.0, beta:2.136
+2022-06-05 13:49:26:INFO:alpha:1.0, beta:2.170
+2022-06-05 13:49:28:INFO:alpha:1.0, beta:2.205
+2022-06-05 13:49:29:INFO:alpha:1.0, beta:2.239
+2022-06-05 13:49:32:INFO:alpha:1.0, beta:2.274
+2022-06-05 13:49:34:INFO:alpha:1.0, beta:2.308
+2022-06-05 13:49:35:INFO:alpha:1.0, beta:2.343
+2022-06-05 13:49:37:INFO:alpha:1.0, beta:2.377
+2022-06-05 13:49:39:INFO:alpha:1.0, beta:2.412
+2022-06-05 13:49:41:INFO:alpha:1.0, beta:2.446
+2022-06-05 13:49:43:INFO:alpha:1.0, beta:2.481
+2022-06-05 13:49:46:INFO:alpha:1.0, beta:2.515
+2022-06-05 13:49:48:INFO:alpha:1.0, beta:2.550
+2022-06-05 13:49:49:INFO:alpha:1.0, beta:2.584
+2022-06-05 13:49:51:INFO:alpha:1.0, beta:2.619
+2022-06-05 13:49:53:INFO:alpha:1.0, beta:2.653
+2022-06-05 13:49:55:INFO:alpha:1.0, beta:2.688
+2022-06-05 13:49:57:INFO:alpha:1.0, beta:2.722
+2022-06-05 13:49:59:INFO:alpha:1.0, beta:2.757
+2022-06-05 13:50:01:INFO:alpha:1.0, beta:2.791
+2022-06-05 13:50:04:INFO:alpha:1.0, beta:2.826
+2022-06-05 13:50:06:INFO:alpha:1.0, beta:2.860
+2022-06-05 13:50:08:INFO:alpha:1.0, beta:2.894
+2022-06-05 13:50:09:INFO:alpha:1.0, beta:2.929
+2022-06-05 13:50:11:INFO:alpha:1.0, beta:2.964
+2022-06-05 13:50:13:INFO:alpha:1.0, beta:2.998
+2022-06-05 13:50:15:INFO:alpha:1.0, beta:3.033
+2022-06-05 13:50:17:INFO:alpha:1.0, beta:3.067
+2022-06-05 13:50:19:INFO:alpha:1.0, beta:3.102
+2022-06-05 13:50:22:INFO:alpha:1.0, beta:3.136
+2022-06-05 13:50:24:INFO:alpha:1.0, beta:3.171
+2022-06-05 13:50:25:INFO:alpha:1.0, beta:3.205
+2022-06-05 13:50:28:INFO:alpha:1.0, beta:3.240
+2022-06-05 13:50:30:INFO:alpha:1.0, beta:3.274
+2022-06-05 13:50:32:INFO:alpha:1.0, beta:3.309
+2022-06-05 13:50:34:INFO:alpha:1.0, beta:3.343
+2022-06-05 13:50:35:INFO:alpha:1.0, beta:3.377
+2022-06-05 13:50:38:INFO:alpha:1.0, beta:3.412
+2022-06-05 13:50:40:INFO:alpha:1.0, beta:3.447
+2022-06-05 13:50:41:INFO:alpha:1.0, beta:3.481
+2022-06-05 13:50:44:INFO:alpha:1.0, beta:3.516
+2022-06-05 13:50:45:INFO:alpha:1.0, beta:3.550
+2022-06-05 13:50:47:INFO:alpha:1.0, beta:3.585
+2022-06-05 13:50:49:INFO:alpha:1.0, beta:3.619
+2022-06-05 13:50:51:INFO:alpha:1.0, beta:3.654
+2022-06-05 13:50:53:INFO:alpha:1.0, beta:3.688
+2022-06-05 13:50:55:INFO:alpha:1.0, beta:3.723
+2022-06-05 13:50:57:INFO:alpha:1.0, beta:3.757
+2022-06-05 13:50:59:INFO:alpha:1.0, beta:3.792
+2022-06-05 13:51:01:INFO:alpha:1.0, beta:3.826
+2022-06-05 13:51:03:INFO:alpha:1.0, beta:3.861
+2022-06-05 13:51:05:INFO:alpha:1.0, beta:3.895
+2022-06-05 13:51:07:INFO:alpha:1.0, beta:3.930
+2022-06-05 13:51:09:INFO:alpha:1.0, beta:3.964
+2022-06-05 13:51:11:INFO:alpha:1.0, beta:3.999
+2022-06-05 13:51:13:INFO:alpha:1.0, beta:4.033
+2022-06-05 13:51:14:INFO:alpha:1.0, beta:4.067
+2022-06-05 13:51:16:INFO:alpha:1.0, beta:4.102
+2022-06-05 13:51:18:INFO:alpha:1.0, beta:4.136
+2022-06-05 13:51:20:INFO:alpha:1.0, beta:4.171
+2022-06-05 13:51:22:INFO:alpha:1.0, beta:4.205
+2022-06-05 13:51:24:INFO:alpha:1.0, beta:4.240
+2022-06-05 13:51:26:INFO:alpha:1.0, beta:4.274
+2022-06-05 13:51:28:INFO:alpha:1.0, beta:4.309
+2022-06-05 13:51:30:INFO:alpha:1.0, beta:4.343
+2022-06-05 13:51:32:INFO:alpha:1.0, beta:4.378
+2022-06-05 13:51:34:INFO:alpha:1.0, beta:4.412
+2022-06-05 13:51:36:INFO:alpha:1.0, beta:4.447
+2022-06-05 13:51:38:INFO:alpha:1.0, beta:4.481
+2022-06-05 13:51:39:INFO:alpha:1.0, beta:4.516
+2022-06-05 13:51:42:INFO:alpha:1.0, beta:4.550
+2022-06-05 13:51:43:INFO:alpha:1.0, beta:4.585
+2022-06-05 13:51:45:INFO:alpha:1.0, beta:4.620
+2022-06-05 13:51:47:INFO:alpha:1.0, beta:4.654
+2022-06-05 13:51:49:INFO:alpha:1.0, beta:4.688
+2022-06-05 13:51:51:INFO:alpha:1.0, beta:4.723
+2022-06-05 13:51:53:INFO:alpha:1.0, beta:4.757
+2022-06-05 13:51:55:INFO:alpha:1.0, beta:4.792
+2022-06-05 13:51:57:INFO:alpha:1.0, beta:4.827
+2022-06-05 13:51:59:INFO:alpha:1.0, beta:4.861
+2022-06-05 13:52:02:INFO:alpha:1.0, beta:4.896
+2022-06-05 13:52:04:INFO:alpha:1.0, beta:4.930
+2022-06-05 13:52:05:INFO:alpha:1.0, beta:4.965
+2022-06-05 13:52:07:INFO:alpha:1.0, beta:4.999
+2022-06-05 13:52:09:INFO:alpha:1.0, beta:5.034
+2022-06-05 13:52:11:INFO:alpha:1.0, beta:5.068
+2022-06-05 13:52:13:INFO:alpha:1.0, beta:5.103
+2022-06-05 13:52:15:INFO:alpha:1.0, beta:5.137
+2022-06-05 13:52:17:INFO:alpha:1.0, beta:5.171
+2022-06-05 13:52:19:INFO:alpha:1.0, beta:5.206
+2022-06-05 13:52:21:INFO:alpha:1.0, beta:5.240
+2022-06-05 13:52:23:INFO:alpha:1.0, beta:5.275
+2022-06-05 13:52:25:INFO:alpha:1.0, beta:5.309
+2022-06-05 13:52:27:INFO:alpha:1.0, beta:5.344
+2022-06-05 13:52:29:INFO:alpha:1.0, beta:5.378
+2022-06-05 13:52:31:INFO:alpha:1.0, beta:5.413
+2022-06-05 13:52:33:INFO:alpha:1.0, beta:5.447
+2022-06-05 13:52:35:INFO:alpha:1.0, beta:5.482
+2022-06-05 13:52:37:INFO:alpha:1.0, beta:5.516
+2022-06-05 13:52:39:INFO:alpha:1.0, beta:5.551
+2022-06-05 13:52:42:INFO:alpha:1.0, beta:5.586
+2022-06-05 13:52:44:INFO:alpha:1.0, beta:5.620
+2022-06-05 13:52:46:INFO:alpha:1.0, beta:5.655
+2022-06-05 13:52:48:INFO:alpha:1.0, beta:5.689
+2022-06-05 13:52:50:INFO:alpha:1.0, beta:5.723
+2022-06-05 13:52:53:INFO:alpha:1.0, beta:5.758
+2022-06-05 13:52:55:INFO:alpha:1.0, beta:5.792
+2022-06-05 13:52:57:INFO:alpha:1.0, beta:5.827
+2022-06-05 13:52:59:INFO:alpha:1.0, beta:5.861
+2022-06-05 13:53:02:INFO:alpha:1.0, beta:5.896
+2022-06-05 13:53:03:INFO:alpha:1.0, beta:5.931
+2022-06-05 13:53:05:INFO:alpha:1.0, beta:5.965
+2022-06-05 13:53:07:INFO:alpha:1.0, beta:6.000
+2022-06-05 13:53:09:INFO:alpha:1.0, beta:6.034
+2022-06-05 13:53:10:INFO:alpha:1.0, beta:6.069
+2022-06-05 13:53:13:INFO:alpha:1.0, beta:6.103
+2022-06-05 13:53:15:INFO:alpha:1.0, beta:6.137
+2022-06-05 13:53:17:INFO:alpha:1.0, beta:6.172
+2022-06-05 13:53:19:INFO:alpha:1.0, beta:6.206
+2022-06-05 13:53:21:INFO:alpha:1.0, beta:6.241
+2022-06-05 13:53:23:INFO:alpha:1.0, beta:6.276
+2022-06-05 13:53:25:INFO:alpha:1.0, beta:6.310
+2022-06-05 13:53:27:INFO:alpha:1.0, beta:6.345
+2022-06-05 13:53:30:INFO:alpha:1.0, beta:6.379
+2022-06-05 13:53:32:INFO:alpha:1.0, beta:6.413
+2022-06-05 13:53:35:INFO:alpha:1.0, beta:6.448
+2022-06-05 13:53:37:INFO:alpha:1.0, beta:6.482
+2022-06-05 13:53:39:INFO:alpha:1.0, beta:6.517
+2022-06-05 13:53:42:INFO:alpha:1.0, beta:6.551
+2022-06-05 13:53:44:INFO:alpha:1.0, beta:6.586
+2022-06-05 13:53:46:INFO:alpha:1.0, beta:6.621
+2022-06-05 13:53:49:INFO:alpha:1.0, beta:6.655
+2022-06-05 13:53:51:INFO:alpha:1.0, beta:6.689
+2022-06-05 13:53:53:INFO:alpha:1.0, beta:6.724
+2022-06-05 13:53:56:INFO:alpha:1.0, beta:6.758
+2022-06-05 13:53:58:INFO:alpha:1.0, beta:6.793
+2022-06-05 13:54:00:INFO:alpha:1.0, beta:6.827
+2022-06-05 13:54:03:INFO:alpha:1.0, beta:6.862
+2022-06-05 13:54:05:INFO:alpha:1.0, beta:6.897
+2022-06-05 13:54:07:INFO:alpha:1.0, beta:6.931
+2022-06-05 13:54:10:INFO:alpha:1.0, beta:6.966
+2022-06-05 13:54:12:INFO:alpha:1.25, beta:0.100
+2022-06-05 13:54:14:INFO:alpha:1.25, beta:0.135
+2022-06-05 13:54:17:INFO:alpha:1.25, beta:0.169
+2022-06-05 13:54:19:INFO:alpha:1.25, beta:0.204
+2022-06-05 13:54:21:INFO:alpha:1.25, beta:0.238
+2022-06-05 13:54:23:INFO:alpha:1.25, beta:0.272
+2022-06-05 13:54:26:INFO:alpha:1.25, beta:0.307
+2022-06-05 13:54:28:INFO:alpha:1.25, beta:0.342
+2022-06-05 13:54:30:INFO:alpha:1.25, beta:0.376
+2022-06-05 13:54:32:INFO:alpha:1.25, beta:0.410
+2022-06-05 13:54:35:INFO:alpha:1.25, beta:0.445
+2022-06-05 13:54:37:INFO:alpha:1.25, beta:0.480
+2022-06-05 13:54:39:INFO:alpha:1.25, beta:0.514
+2022-06-05 13:54:41:INFO:alpha:1.25, beta:0.548
+2022-06-05 13:54:44:INFO:alpha:1.25, beta:0.583
+2022-06-05 13:54:46:INFO:alpha:1.25, beta:0.617
+2022-06-05 13:54:48:INFO:alpha:1.25, beta:0.652
+2022-06-05 13:54:51:INFO:alpha:1.25, beta:0.686
+2022-06-05 13:54:53:INFO:alpha:1.25, beta:0.721
+2022-06-05 13:54:55:INFO:alpha:1.25, beta:0.755
+2022-06-05 13:54:57:INFO:alpha:1.25, beta:0.790
+2022-06-05 13:55:00:INFO:alpha:1.25, beta:0.825
+2022-06-05 13:55:02:INFO:alpha:1.25, beta:0.859
+2022-06-05 13:55:04:INFO:alpha:1.25, beta:0.894
+2022-06-05 13:55:06:INFO:alpha:1.25, beta:0.928
+2022-06-05 13:55:09:INFO:alpha:1.25, beta:0.963
+2022-06-05 13:55:11:INFO:alpha:1.25, beta:0.997
+2022-06-05 13:55:13:INFO:alpha:1.25, beta:1.032
+2022-06-05 13:55:15:INFO:alpha:1.25, beta:1.066
+2022-06-05 13:55:17:INFO:alpha:1.25, beta:1.101
+2022-06-05 13:55:20:INFO:alpha:1.25, beta:1.135
+2022-06-05 13:55:22:INFO:alpha:1.25, beta:1.170
+2022-06-05 13:55:24:INFO:alpha:1.25, beta:1.204
+2022-06-05 13:55:26:INFO:alpha:1.25, beta:1.239
+2022-06-05 13:55:29:INFO:alpha:1.25, beta:1.273
+2022-06-05 13:55:31:INFO:alpha:1.25, beta:1.308
+2022-06-05 13:55:34:INFO:alpha:1.25, beta:1.342

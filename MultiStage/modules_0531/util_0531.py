@@ -57,13 +57,13 @@ def test_stage2_online(args, transformer,adapter, model, test_loader, alpha=None
 
         logits, _ = adapter(image_features, target)
         topK_protos, topK_zeroshot_weights = get_topK_ProtosAndZeroshotWeight(logits, adapter.proto, adapter.zero_shots_weight, args.topK)
-        new_logits = transformer(image_features,topK_protos, topK_zeroshot_weights, alpha, beta)
+        new_logits = transformer(image_features, topK_protos, topK_zeroshot_weights, alpha, beta)
         new_target = logits.topk(args.topK)[1]
         
         correct = accuracy_test(new_logits, new_target, target)
         correct_all += correct
         n += len(new_logits)
-    top1  = (correct / n) * 100
+    top1  = (correct_all / n) * 100
     return top1
 '''
 输入:
@@ -109,7 +109,7 @@ test_logits:[batch,topK]
 test_topK_targets:[batch,topK],里面不一定有正确的测试标签
 test_target=[batch],测试标签
 '''
-def accuracy_test(test_logits:torch.Tensor, test_topK_targets,test_target):
+def accuracy_test(test_logits:torch.Tensor, test_topK_targets, test_target):
     acc1 = 0.
     top1_indices = test_logits.topk(1)[1]
     for i,target in enumerate(test_target):

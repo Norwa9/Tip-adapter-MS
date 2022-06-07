@@ -8,3 +8,7 @@
 2022-06-05 12:53:35:INFO:Loading testing prototypes and testing zeroshot weights...
 2022-06-05 12:53:37:INFO:Refine time: 1 / 10
 2022-06-05 12:54:13:INFO:LR: 0.009755, Acc: 0.6349 (10158.0/16000), Loss: 1.8240
+2022-06-05 13:01:14:INFO:Refine Top-1 Accuracy: 0.46
+2022-06-05 13:01:14:INFO:Stage2: Saving best model..
+2022-06-05 13:01:15:INFO:Refine time: 2 / 10
+2022-06-05 13:01:51:INFO:LR: 0.009045, Acc: 0.6678 (10685.0/16000), Loss: 1.4765

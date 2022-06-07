@@ -29,7 +29,12 @@ class ProtoTransformer(nn.Module):
                                   res_dropout=self.res_dropout,
                                   embed_dropout=self.embed_dropout,
                                   attn_mask=self.attn_mask)
-        self.linear = nn.Linear(1024, 1)
+
+        self.linear = nn.Sequential(
+            nn.Linear(1024,256),
+            nn.ReLU(),
+            nn.Linear(256,1024)
+        )
 
     '''
     x : [batch, 1024]
@@ -42,13 +47,18 @@ class ProtoTransformer(nn.Module):
             self.alpha = alpha
             self.beta = beta
             
-        in_feature = (prototypes + x.unsqueeze(1)) / 2
-        in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
-        offset = self.SALayers(in_feature)[0] # [batch,1024] , 表示每个样本的GT prototype应该加上的偏移量
-        out_feature = (x + offset)  # [batch,1024]
-        out_feature = F.normalize(out_feature,dim=-1).unsqueeze(2) # [batch,1024,1]
-        
-        sim =  (prototypes @ out_feature).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
+        # in_feature = (prototypes + x.unsqueeze(1)) / 2
+        # in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
+        # offset = self.SALayers(in_feature)[0] # [batch,1024] , 表示每个样本应该加上的偏移量
+        # out_feature = (x + offset)  # [batch,1024]
+
+        offset = self.linear(torch.mean(prototypes,dim=1)) # [batch, 1024]
+        offset = offset.unsqueeze(1) # batch, 1024] -> [batch, 1, 1024]]
+        offset = F.normalize(offset,dim=-1) # [batch,1024,1]
+
+        prototypes = prototypes + offset # [batch, proto_num, 1024]
+
+        sim =  (prototypes @ x.unsqueeze(2)).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
         zero_shot_logits = (100. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
         logits = new_knowledges + zero_shot_logits
@@ -56,27 +66,6 @@ class ProtoTransformer(nn.Module):
         # score = att_rank(transformer_logits) # s
         
         return logits
-
-    '''
-    x : [batch, 1024]
-    target : [batch] 取值0~cls_num-1
-    prototypes : [batch, topK, 1024]
-    zeroshot_weights : [batch, topK, 1024]
-    '''
-    # def forward(self, prototypes):
-    #     '''
-    #     1.输入prototypes经过自注意力交互
-    #     '''
-    #     prototypes = prototypes.permute(1,0,2) # [batch, topK, 1024] -> [topK, batch, 1024]
-    #     out = self.SALayers(prototypes)[0] # [batch, 1024] 
-        
-
-    #     '''
-    #     2.计算logits
-    #     '''
-    #     pred = self.cls(out) # [batch, 1000]
-        
-    #     return pred
 
 def att_rank(y):
     exp_y = torch.exp(y)
