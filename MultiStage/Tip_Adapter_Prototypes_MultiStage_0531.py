@@ -669,12 +669,13 @@ def main():
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
             # new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits,target, args.topK) 
+            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits, target, args.topK, 50) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
-            new_logits = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights)
+            new_logits, recons_loss = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights, new_target)
             
             # 3.
-            loss = F.cross_entropy(new_logits, new_target)
+            cls_loss = F.cross_entropy(new_logits, new_target)
+            loss = cls_loss + recons_loss
             loss_value = loss.item()
             correct = accuracy(new_logits, new_target)
             correct_all += correct[0]
@@ -694,8 +695,8 @@ def main():
         # eval
         transformer.eval()
 
-        # top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
-        top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
+        top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels)
+        # top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
 
         logger.info(f"Refine Top-1 Accuracy: {top1:.2f}")
         if top1 > best_top1:
@@ -719,8 +720,8 @@ def main():
         for alpha in alpha_list:
             for beta in beta_list:
                 logger.info(f"alpha:{alpha}, beta:{beta:.3f}") 
-                # top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
-                top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
+                top1 = test_stage2_offline(transformer,None,test_features,test_prototypes,test_zs_weights,test_topK_targets,test_labels, alpha, beta)
+                # top1 = test_stage2_online(args, transformer, adapter, model, loader, alpha=None,beta=None)
                 if top1 > best_top1:
                     logger.info(f'New best setting, alpha: {alpha:.2f}, beta: {beta:.2f}; Top-1 acc: {top1:.2f}')
                     torch.save(transformer.state_dict(), state_dict_save_path_transforer)

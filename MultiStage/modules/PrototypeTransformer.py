@@ -42,30 +42,32 @@ class ProtoTransformer(nn.Module):
     prototypes : [batch, proto_num, 1024]
     zeroshot_weights : [batch, proto_num, 1024]
     '''
-    def forward(self, x, prototypes, zeroshot_weights, alpha=None,beta=None):
+    def forward(self, x, prototypes, zeroshot_weights, new_target=None, alpha=None,beta=None):
         if alpha != None:
             self.alpha = alpha
             self.beta = beta
-            
-        # in_feature = (prototypes + x.unsqueeze(1)) / 2
-        # in_feature = in_feature.permute(1,0,2) # [batch, proto_num, 1024] -> [proto_num, batch, 1024]
-        # offset = self.SALayers(in_feature)[0] # [batch,1024] , 表示每个样本应该加上的偏移量
-        # out_feature = (x + offset)  # [batch,1024]
+        
+        in_feature = (prototypes + x.unsqueeze(1)) / 2 # [batch, proto_num, 1024]
+        offset = self.linear(torch.mean(in_feature,dim=1)) 
+        offset = F.normalize(offset,dim=-1) # [batch,1024]
+        offset_prototypes = in_feature + offset.unsqueeze(1)
+        offset_prototypes = F.normalize(offset_prototypes,dim=-1)
 
-        offset = self.linear(torch.mean(prototypes,dim=1)) # [batch, 1024]
-        offset = offset.unsqueeze(1) # batch, 1024] -> [batch, 1, 1024]]
-        offset = F.normalize(offset,dim=-1) # [batch,1024,1]
-
-        prototypes = prototypes + offset # [batch, proto_num, 1024]
-
-        sim =  (prototypes @ x.unsqueeze(2)).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
+        sim =  (offset_prototypes @ x.unsqueeze(2)).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
         zero_shot_logits = (100. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
         logits = new_knowledges + zero_shot_logits
         
-        # score = att_rank(transformer_logits) # s
+
+        recons_loss = None
+        mse_loss = nn.MSELoss()
+        if new_target != None:
+            # Training
+            target_proto = prototypes[range(x.shape[0]),new_target] # [batch, 1024]
+            recons_proto = offset_prototypes[range(x.shape[0]),new_target] # [batch, 1024]
+            recons_loss = mse_loss(target_proto,recons_proto)
         
-        return logits
+        return logits, recons_loss
 
 def att_rank(y):
     exp_y = torch.exp(y)

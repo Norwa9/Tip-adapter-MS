@@ -17,7 +17,8 @@ def test_stage2_offline(transformer,loader,test_features,test_prototypes,test_zs
     if loader == None:
         with torch.no_grad():
             
-            new_logits = transformer(test_features, test_prototypes, test_zs_weights, alpha, beta)
+            res = transformer(test_features, test_prototypes, test_zs_weights, None, alpha, beta)
+            new_logits = res[0]
             
             '''test_topK_targets:[batch,topK],test_labels:[batch],如果new_logits中预测的top1是test_labels,则算预测正确'''
             acc1_num = accuracy_test(new_logits, test_topK_targets, test_labels) # new_logits=[batch, proto_num], target=[batch,cls_num]
@@ -33,7 +34,8 @@ def test_stage2_offline(transformer,loader,test_features,test_prototypes,test_zs
                 batch_test_topK_targets = test_topK_targets[i*batch:(i+1)*batch] # [batch, topK] , 表示每个测试样本提取的topK的标签
                 topK_protos, topK_zeroshot_weights = test_prototypes[i*batch:(i+1)*batch], test_zs_weights[i*batch:(i+1)*batch]
                 
-                new_logits = transformer(batch_test_features, topK_protos, topK_zeroshot_weights, alpha, beta)
+                res = transformer(batch_test_features, topK_protos, topK_zeroshot_weights, None, alpha, beta)
+                new_logits = res[0]
                 
                 acc1_num = accuracy_test(new_logits, batch_test_topK_targets, batch_target) # new_logits=[batch, proto_num], target=[batch,cls_num]
                 top1 += acc1_num
@@ -70,27 +72,34 @@ def test_stage2_online(args, transformer,adapter, model, test_loader, alpha=None
     1.一个样本的预测logits
     2.该样本的标签target
     3.需要选取多少个原型topK
+    4.max_random,随机选取类的范围,max_random=50,那么就从top50中随机选取topK+1个类
 输出:
     包含GT prototype和topK个random prototypes的下标:
     1.new_target:[batch], topK+1分类的下标.
     2.origin_target:[batch,topK+1], 每个样本肯定包含其target的topK+1类下标
 '''
-def sapmle_topk1_prototypes(logits:torch.Tensor, targets:torch.Tensor, topK:int):
+def sapmle_topk1_prototypes(logits:torch.Tensor, targets:torch.Tensor, topK:int, max_random:int):
+    max_top_indices = logits.topk(max_random)[1] # [batch, max_random]
     cls_num = logits.shape[1]
     batch = logits.shape[0]
 
     origin_target = []
     new_target = torch.zeros(batch,1).view(-1).to(torch.long)
     for i, target in enumerate(targets):
-        random_targets = random.sample(range(cls_num),topK+1)
+        # random_targets = random.sample(range(cls_num),topK+1) # 从[0,1000]中随机选取topK+1个类
+        random_targets = random.sample(list(max_top_indices[i].cpu().numpy()),topK+1) # 从前max_random个类中随机选取topK+1个类
         if target in random_targets:
+            # 1.如果随机选取的topK+1个类中包含GT,那么GT在topK+1中的下标就是它的相对标签
             new_target[i] = random_targets.index(target)
         else:
-            random_targets[0] = target.cpu().numpy() # tensor->numpy
+            # 2.如果随机选取的topK+1个类中不包含GT,那么将GT插入,即随机把一个类替换出来
+            random_index = random.randint(0,topK)
+            random_targets[random_index] = target.cpu().numpy() # tensor->numpy
+            new_target[i] = random_index
         origin_target =  np.append(origin_target, random_targets)
     
-    origin_target = origin_target.reshape(batch,-1)
-    new_target = new_target.cuda()
+    origin_target = origin_target.reshape(batch,-1) # [batch, topK+1], 取值0~1000
+    new_target = new_target.cuda() # [batch], 取值0~topK
 
     return new_target, origin_target
 
