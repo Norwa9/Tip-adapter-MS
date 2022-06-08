@@ -47,22 +47,23 @@ class ProtoTransformer(nn.Module):
             self.alpha = alpha
             self.beta = beta
         
-        in_feature = (prototypes + x.unsqueeze(1)) / 2 # [batch, proto_num, 1024]
-        offset = self.linear(torch.mean(in_feature,dim=1)) 
-        offset = F.normalize(offset,dim=-1) # [batch,1024]
-        offset_prototypes = in_feature + offset.unsqueeze(1)
+        in_feature = (prototypes + zeroshot_weights + x.unsqueeze(1)) / 3 # [batch, proto_num, 1024]
+        offset = self.SALayers(in_feature.permute(1,0,2))[0] # [batch, 1024]
+        # offset = F.normalize(offset,dim=-1) # [batch,1024]
+        offset_prototypes = prototypes + offset.unsqueeze(1)
         offset_prototypes = F.normalize(offset_prototypes,dim=-1)
 
         sim =  (offset_prototypes @ x.unsqueeze(2)).squeeze(2) # [batch, proto_num, 1024] @ [batch, 1024, 1] = [batch, proto_num, 1] -> [batch, proto_num]
         new_knowledges = ((-1) * (self.alpha - self.alpha * sim)).exp() * self.beta # [batch, proto_num]
-        zero_shot_logits = (100. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
+        zero_shot_logits = (1. * zeroshot_weights @ x.unsqueeze(2)).squeeze(2)
         logits = new_knowledges + zero_shot_logits
+        # logits = new_knowledges
         
 
         recons_loss = None
         mse_loss = nn.MSELoss()
         if new_target != None:
-            # Training
+            # is Training 
             target_proto = prototypes[range(x.shape[0]),new_target] # [batch, 1024]
             recons_proto = offset_prototypes[range(x.shape[0]),new_target] # [batch, 1024]
             recons_loss = mse_loss(target_proto,recons_proto)

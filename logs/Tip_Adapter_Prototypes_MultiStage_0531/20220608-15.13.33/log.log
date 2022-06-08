@@ -1,0 +1,29 @@
+2022-06-08 07:13:33:INFO:Namespace(alpha=1, attn_dropout=0.2, attn_mask=True, augment_epoch=10, batch_size=512, beta=1.17, embed_dim=1024, embed_dropout=0.25, k_shot=16, layers=1, lr=0.015, num_heads=1, refine_epoch=20, refine_lr=0.01, relu_dropout=0.2, res_dropout=0.2, temperature=0.05, test_batch_size=512, topK=5, train_epoch=20, transformer_alpha=1.0, transformer_beta=1.17)
+2022-06-08 07:13:41:INFO:1000 classes, 7 templates
+2022-06-08 07:13:57:INFO:Load data finished.
+2022-06-08 07:13:58:INFO:Loading saved text features.
+2022-06-08 07:13:58:INFO:Loading training image features
+2022-06-08 07:13:58:INFO:start saving testing image features
+2022-06-08 07:13:58:INFO:Loading fintuned adapter parameters..
+2022-06-08 07:13:58:INFO:Loading testing prototypes and testing zeroshot weights...
+2022-06-08 07:14:00:INFO:transformer parameters:13123840
+2022-06-08 07:14:00:INFO:Refine time: 1 / 20
+2022-06-08 07:14:28:INFO:LR: 0.009938, Acc: 0.9580 (15328.0/16000), Loss: 0.1804
+2022-06-08 07:14:30:INFO:Refine Top-1 Accuracy: 60.25
+2022-06-08 07:14:30:INFO:Stage2: Saving best model..
+2022-06-08 07:14:30:INFO:Refine time: 2 / 20
+2022-06-08 07:14:57:INFO:LR: 0.009755, Acc: 0.9901 (15842.0/16000), Loss: 0.0440
+2022-06-08 07:14:59:INFO:Refine Top-1 Accuracy: 58.94
+2022-06-08 07:14:59:INFO:Refine time: 3 / 20
+2022-06-08 07:15:24:INFO:LR: 0.009455, Acc: 0.9926 (15882.0/16000), Loss: 0.0431
+2022-06-08 07:15:26:INFO:Refine Top-1 Accuracy: 56.82
+2022-06-08 07:15:26:INFO:Refine time: 4 / 20
+2022-06-08 07:15:51:INFO:LR: 0.009045, Acc: 0.9961 (15938.0/16000), Loss: 0.0219
+2022-06-08 07:15:53:INFO:Refine Top-1 Accuracy: 57.65
+2022-06-08 07:15:53:INFO:Refine time: 5 / 20
+2022-06-08 07:16:19:INFO:LR: 0.008536, Acc: 0.9959 (15935.0/16000), Loss: 0.0227
+2022-06-08 07:16:21:INFO:Refine Top-1 Accuracy: 57.57
+2022-06-08 07:16:21:INFO:Refine time: 6 / 20
+2022-06-08 07:16:46:INFO:LR: 0.007939, Acc: 0.9982 (15971.0/16000), Loss: 0.0100
+2022-06-08 07:16:48:INFO:Refine Top-1 Accuracy: 57.24
+2022-06-08 07:16:48:INFO:Refine time: 7 / 20

@@ -340,7 +340,7 @@ def main():
     
     # lr 
     parser.add_argument('--lr', type=float, default=0.015, help='lr')
-    parser.add_argument('--refine_lr', type=float, default=0.01)
+    parser.add_argument('--refine_lr', type=float, default=0.002)
 
     # epoch
     parser.add_argument('--train_epoch', type=int, default=20)
@@ -645,6 +645,8 @@ def main():
 
     # prototypes映射网络
     transformer = ProtoTransformer(args).cuda()
+    params = np.sum([int(np.prod(p.shape)) for p in transformer.parameters()])
+    logger.info(f'transformer parameters:{params}')
     optimizer_trans = torch.optim.AdamW(transformer.parameters(), lr=args.refine_lr, eps=1e-4)
     scheduler_trans = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_trans, args.refine_epoch * len(train_loader_shuffle))
     best_top1 = -1
@@ -669,13 +671,14 @@ def main():
             # new_target 用于transformer的分类任务
             # origin_target 用于从adapter的proto中提取对应的topK+1个prototypes
             # new_target, topK_plusone_indices = find_topk_plus_one(logits,target, args.topK) 
-            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits, target, args.topK, 50) 
+            new_target, topK_plusone_indices = sapmle_topk1_prototypes(logits, target, args.topK, 10) 
             topK_plusone_protos, topK_plusone_zeroshot_weights = get_topK_plusone_protos(topK_plusone_indices, adapter.proto, adapter.zero_shots_weight)# [batch, topK+1, 1024]
             new_logits, recons_loss = transformer(image_features, topK_plusone_protos, topK_plusone_zeroshot_weights, new_target)
             
             # 3.
             cls_loss = F.cross_entropy(new_logits, new_target)
-            loss = cls_loss + recons_loss
+            # loss = cls_loss + recons_loss # cls_loss=1.7x, recons_loss = 0.02x
+            loss = cls_loss
             loss_value = loss.item()
             correct = accuracy(new_logits, new_target)
             correct_all += correct[0]
